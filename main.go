@@ -15,10 +15,11 @@ func main() {
 		return
 	}
 	myNote := parser.Note{
-		Author:       "John Doe",
+		Author:       "The TCP/IP Guide: A Comprehensive, Illustrated Internet Protocols Reference (Charles M. Kozierok)",
 		Content:      []string{},
-		FileLocation: currentDir + "/My Clipping.txt",
+		FileLocation: currentDir + "/test-file/My Clippings.txt",
 	}
 
-	myNote.ParseNotes()
+	res, err := myNote.ParseNotes()
+	fmt.Printf("RESULT: %v", res)
 }
