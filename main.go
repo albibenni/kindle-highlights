@@ -11,7 +11,6 @@ import (
 )
 
 func main() {
-	// This is a placeholder for the main function.
 	fmt.Printf("Hello, Note!\n")
 	envFile := types.GetEnvFile()
 	if envFile == "wrong pc" {
@@ -26,17 +25,14 @@ func main() {
 		return
 	}
 	myNote := parser.Note{
-		Author:          "Linux Basics for Hackers",
-		Title:           "Linux Basics for Hackers",
+		Author:          "",
+		Title:           "Linux Basics for Hackers", //TODO: add real title --> FileDestination end folder
 		Content:         []string{},
 		FileLocation:    currentDir + "/test-file/My Clippings.txt",
 		FileDestination: currentDir + "/test-file/test.md",
 	}
 
 	_, err = myNote.ParseNotes()
-	// for _, w := range res {
-	// 	fmt.Printf("RESULT: %s\n", w)
-	// }
 	if err != nil {
 		fmt.Println("Error parsing notes:", err)
 		return
