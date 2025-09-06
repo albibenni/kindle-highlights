@@ -16,14 +16,24 @@ func main() {
 	}
 	myNote := parser.Note{
 		Author:       "Linux Basics for Hackers",
-		Title:       "Linux Basics for Hackers",
+		Title:        "Linux Basics for Hackers",
 		Content:      []string{},
 		FileLocation: currentDir + "/test-file/My Clippings.txt",
 	}
 
-	res, err := myNote.ParseNotes()
-	for _, w := range res {
-		fmt.Printf("RESULT: %s\n", w)
+	_, err = myNote.ParseNotes()
+	// for _, w := range res {
+	// 	fmt.Printf("RESULT: %s\n", w)
+	// }
+	if err != nil {
+		fmt.Println("Error parsing notes:", err)
+		return
 	}
-	fmt.Printf("RESULT len: %d\n", len(res))
+	fileDest, err := myNote.WriteFile()
+	if err != nil {
+		fmt.Println("Error writing file:", err)
+		return
+	}
+	fmt.Printf("RESULT : %s\n", fileDest)
+	fmt.Printf("RESULT len: %d\n", len(fileDest))
 }

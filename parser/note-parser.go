@@ -3,8 +3,10 @@ package parser
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -14,13 +16,15 @@ type NoteInterface interface {
 	GetContent() []string
 	GetFileLocation() string
 	ParseNotes() ([]string, error)
+	WriteFile() (string, error)
 }
 
 type Note struct {
-	Author       string
-	Title        string
-	Content      []string
-	FileLocation string
+	Author          string
+	Title           string
+	Content         []string
+	FileLocation    string
+	FileDestination string //TODO: add env for local obsidian folder for md file
 }
 
 func (note *Note) ParseNotes() ([]string, error) {
@@ -47,6 +51,22 @@ func (note *Note) ParseNotes() ([]string, error) {
 		}
 	}
 	return note.Content, nil
+}
+
+func (note Note) WriteFile() (string, error) {
+	res, err := uniteNotes(note.Content)
+	if err != nil {
+		return "", err
+	}
+	if len(strings.TrimSpace(note.FileDestination)) == 0 {
+		return "", err
+	}
+
+	err = writeContentToFile(note.FileDestination, res)
+	if err != nil {
+		return "", err
+	}
+	return note.FileDestination, nil
 }
 
 func (note Note) GetAuthor() (string, error) {
