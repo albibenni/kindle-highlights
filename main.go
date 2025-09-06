@@ -15,7 +15,8 @@ func main() {
 		return
 	}
 	myNote := parser.Note{
-		Author:       "The TCP/IP Guide: A Comprehensive, Illustrated Internet Protocols Reference (Charles M. Kozierok)",
+		Author:       "Linux Basics for Hackers",
+		Title:       "Linux Basics for Hackers",
 		Content:      []string{},
 		FileLocation: currentDir + "/test-file/My Clippings.txt",
 	}

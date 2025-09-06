@@ -70,9 +70,12 @@ func checkNotesByTitle(title string, buffLine string, isNextNote bool) (result s
 	case len(strings.TrimSpace(buffLine)) == 0:
 		fmt.Println("Empty note line")
 		return "", isNextNote, nil
+
+	case strings.Contains(strings.ToLower(buffLine), "your highlight "):
+		fmt.Println("Skipping boilerplate lane - your hightlight...")
+		return "", isNextNote, nil
 	default:
-		log.Fatal("Not handled")
-		return "", false, errors.New("Unhandled")
+		return buffLine, isNextNote, nil
 	}
 }
 
