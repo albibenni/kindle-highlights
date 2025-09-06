@@ -21,5 +21,8 @@ func main() {
 	}
 
 	res, err := myNote.ParseNotes()
-	fmt.Printf("RESULT: %v", res)
+	for _, w := range res {
+		fmt.Printf("RESULT: %s\n", w)
+	}
+	fmt.Printf("RESULT len: %d\n", len(res))
 }
