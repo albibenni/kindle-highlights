@@ -20,18 +20,17 @@ type Note struct {
 
 func (note *Note) ParseNotes() ([]string, error) {
 	file, err := os.Open(note.FileLocation)
-	var res []string
 	if err != nil {
-		log.Fatal("File not found:",err)
+		log.Fatal("File not found:", err)
 		return nil, err
 	}
-	buffer := make([]byte, 1024)
 	for {
-		line, err := file.Read(buffer)
+		buffer := make([]byte, 1024)
+		n, err := file.Read(buffer)
 		if err != nil {
 			break
 		}
-		res = append(note.Content, string(buffer[:line]))
+		note.Content = append(note.Content, string(buffer[:n]))
 	}
-	return res, nil
+	return note.Content, nil
 }
