@@ -3,10 +3,8 @@ package parser
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -24,7 +22,7 @@ type Note struct {
 	Title           string
 	Content         []string
 	FileLocation    string
-	FileDestination string //TODO: add env for local obsidian folder for md file
+	FileDestination string
 }
 
 func (note *Note) ParseNotes() ([]string, error) {
