@@ -3,6 +3,7 @@ package parser
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -33,28 +34,47 @@ func (note *Note) ParseNotes() ([]string, error) {
 	// for {
 	// buffer := make([]byte, 1024)
 	// n, err := file.Read(buffer)
+	isNextNote := true
 	for scanner.Scan() {
 		line := scanner.Text()
-		note.Content = append(note.Content, line) // remember to trim in case \r\n to mac/linux format
+		//note.Content = append(note.Content, line) // remember to trim in case \r\n to mac/linux format
+		res, isNextNotee, err := checkNotesByTitle(note.Title, line, isNextNote)
+		if err != nil {
+			return nil, err
+		}
+		isNextNote = isNextNotee
+		if len(res) > 0 {
+			note.Content = append(note.Content, res) // remember to trim in case \r\n to mac/linux format
+		}
 	}
 	return note.Content, nil
 }
 
-// func checkNotesByTitle(title string, buffLine string, needCheck bool, goNext bool) ([]string, error) {
-// 	if goNext {
-// 		return nil, nil
-// 	}
-// 	var newLine []string
-// 	if needCheck {
-// 		// title is "" or blank spaces
-// 		if len(strings.TrimSpace(title)) == 0 {
-// 			err := errors.New("Title not defined")
-// 			log.Fatal("File not found:", err)
-// 			return nil, err
-// 		}
-// 	}
-//
-// }
+func checkNotesByTitle(title string, buffLine string, isNextNote bool) (result string, isNextNotee bool, err error) {
+	switch {
+	// taking in consideration cases where == lines are duplicates so isNextNote is true - not considered
+	// and return true already
+	case isNextNote:
+		titleTrimmed := strings.TrimSpace(title)
+		if len(titleTrimmed) == 0 {
+			return "", false, errors.New("Title not defined")
+		}
+		if strings.Contains(buffLine, titleTrimmed) {
+			fmt.Printf("Found new note of Title %s\n", titleTrimmed)
+			return "", false, nil
+		}
+		return "", isNextNote, nil
+	case buffLine == "==========\r", buffLine == "==========\n", buffLine == "==========", buffLine == "==========\r\n":
+		fmt.Printf("delimiter not counted - new note coming")
+		return "", true, nil
+	case len(strings.TrimSpace(buffLine)) == 0:
+		fmt.Println("Empty note line")
+		return "", isNextNote, nil
+	default:
+		log.Fatal("Not handled")
+		return "", false, errors.New("Unhandled")
+	}
+}
 
 func (note Note) GetAuthor() (string, error) {
 	if len(strings.TrimSpace(note.Author)) == 0 {
