@@ -18,11 +18,12 @@ type NoteInterface interface {
 }
 
 type Note struct {
-	Author          string
-	Title           string
-	Content         []string
-	FileLocation    string
-	FileDestination string
+	Author            string
+	Title             string
+	Content           []string
+	FileLocation      string
+	FileDestination   string
+	IsLookingForTitle bool
 }
 
 func (note *Note) ParseNotes() ([]string, error) {
@@ -36,10 +37,14 @@ func (note *Note) ParseNotes() ([]string, error) {
 	// buffer := make([]byte, 1024)
 	// n, err := file.Read(buffer)
 	isNextNote := true
+	titleLookup := note.Title
 	for scanner.Scan() {
 		line := scanner.Text()
+		if note.IsLookingForTitle {
+			note.setTitle(line)
+		}
 		//note.Content = append(note.Content, line) // remember to trim in case \r\n to mac/linux format
-		res, isNextNotee, err := checkNotesByTitle(note.Title, line, isNextNote)
+		res, isNextNotee, err := checkNotesByTitle(titleLookup, line, isNextNote)
 		if err != nil {
 			return nil, err
 		}
@@ -100,4 +105,14 @@ func (note Note) GetContent() ([]string, error) {
 		return nil, err
 	}
 	return note.Content, nil
+}
+
+func (note *Note) setTitle(buffLine string) {
+	titleTrimmed := strings.TrimSpace(note.Title)
+	if strings.Contains(buffLine, titleTrimmed) {
+		defer func() {
+			note.IsLookingForTitle = false
+		}()
+
+	}
 }
