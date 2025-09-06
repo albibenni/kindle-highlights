@@ -2,14 +2,19 @@ package main
 
 import (
 	"fmt"
-	"github.com/albibenni/kindle-highlights/parser"
 	"os"
+
+	"github.com/albibenni/kindle-highlights/parser"
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	// This is a placeholder for the main function.
 	fmt.Printf("Hello, Note!\n")
-	currentDir, err := os.Getwd()
+	godotenv.Load("local.env")
+
+	// START Logic
+	currentDir, err := os.Getwd() //TODO: add from stdin - option 2nd arg = path arg[1] else default to env?
 	if err != nil {
 		fmt.Println("Error getting current directory:", err)
 		return
