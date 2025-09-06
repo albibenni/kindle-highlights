@@ -113,6 +113,6 @@ func (note *Note) setTitle(buffLine string) {
 		defer func() {
 			note.IsLookingForTitle = false
 		}()
-
+		//TODO: format title
 	}
 }
