@@ -3,6 +3,9 @@
 build:
 	go build -o kindle-parser && ./kindle-parser $(ARGS) # example make build ARGS="test Linux"
 
+build-solo:
+	go build -o kindle-parser
+
 test:
 	go test ./...
 
