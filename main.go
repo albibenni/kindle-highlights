@@ -35,12 +35,12 @@ func main() {
 	fmt.Printf("FileLocation: %s", myNote.FileLocation)
 	_, err := myNote.ParseNotes()
 	if err != nil {
-		fmt.Println("Error parsing notes:", err)
+		fmt.Printf("Error parsing notes: %s", err)
 		return
 	}
 	_, err = myNote.WriteFile()
 	if err != nil {
-		fmt.Println("Error writing file:", err)
+		fmt.Printf("Error writing file: %s", err)
 		return
 	}
 }
@@ -58,6 +58,8 @@ func handleArgs(note *parser.Note, args []string) {
 			fmt.Printf("3. %sTwo Args%s: \n - %stest%s: to setup test FileLocation path\n - %s<title-name>%s: title to search\n", types.Bold, types.Reset, types.Italic, types.Reset, types.Italic, types.Reset)
 			fmt.Printf("4. %sTwo Args%s: \n - %s<title-name>%s: title to search\n - %s<file-location>%s: absolute path to the file\n", types.Bold, types.Reset, types.Italic, types.Reset, types.Italic, types.Reset)
 			os.Exit(0)
+		} else {
+			note.Title = args[1]
 		}
 	case 3:
 
