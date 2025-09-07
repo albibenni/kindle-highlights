@@ -25,11 +25,12 @@ func main() {
 		return
 	}
 	myNote := parser.Note{
-		Author:          "",
-		Title:           "Linux Basics for Hackers", //TODO: add real title --> FileDestination end folder
-		Content:         []string{},
-		FileLocation:    currentDir + "/test-file/My Clippings.txt",
-		FileDestination: currentDir + "/test-file/test.md",
+		Author:            "",
+		Title:             "Linux Basics for Hackers",
+		Content:           []string{},
+		FileLocation:      currentDir + "/test-file/My Clippings.txt",
+		FileDestination:   "",
+		IsLookingForTitle: true,
 	}
 
 	_, err = myNote.ParseNotes()
@@ -37,11 +38,11 @@ func main() {
 		fmt.Println("Error parsing notes:", err)
 		return
 	}
-	fileDest, err := myNote.WriteFile()
+	_, err = myNote.WriteFile()
 	if err != nil {
 		fmt.Println("Error writing file:", err)
 		return
 	}
-	fmt.Printf("RESULT : %s\n", fileDest)
-	fmt.Printf("RESULT len: %d\n", len(fileDest))
+	// fmt.Printf("RESULT : %s\n", fileDest)
+	// fmt.Printf("RESULT len: %d\n", len(fileDest))
 }
