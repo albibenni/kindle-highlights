@@ -69,6 +69,9 @@ func handleArgs(note *parser.Note, args []string) {
 			}
 			note.FileLocation = currentDir + "/test-file/My Clippings.txt"
 			note.Title = args[2]
+		} else {
+			note.Title = args[1]
+			note.FileLocation = args[2]
 		}
 	}
 }
