@@ -3,10 +3,13 @@ package parser
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/albibenni/kindle-highlights/types"
 )
 
 type NoteInterface interface {
@@ -34,17 +37,14 @@ func (note *Note) ParseNotes() ([]string, error) {
 		log.Fatal("File not found:", err)
 		return nil, err
 	}
-	// for {
-	// buffer := make([]byte, 1024)
-	// n, err := file.Read(buffer)
 	isNextNote := true
 	titleLookup := note.Title
 	for scanner.Scan() {
 		line := scanner.Text()
 		if note.IsLookingForTitle {
 			note.setTitleAndAuthor(line)
+			fmt.Println("Looking for title: ", note.Title)
 		}
-		//note.Content = append(note.Content, line) // remember to trim in case \r\n to mac/linux format
 		res, isNextNotee, err := checkNotesByTitle(titleLookup, line, isNextNote)
 		if err != nil {
 			return nil, err
@@ -57,16 +57,19 @@ func (note *Note) ParseNotes() ([]string, error) {
 	return note.Content, nil
 }
 
-func (note Note) WriteFile() (string, error) {
-	res, err := uniteNotes(note.Content)
+func (note *Note) WriteFile() (string, error) {
+
+	note.setFileDestination()
+
+	if len(note.FileDestination) == 0 {
+		return "", errors.New("File Destination not present")
+	}
+	unitedNotes, err := uniteNotes(note.Content, note.Title)
 	if err != nil {
 		return "", err
 	}
-	if len(strings.TrimSpace(note.FileDestination)) == 0 {
-		return "", err
-	}
 
-	err = writeContentToFile(note.FileDestination, res)
+	err = writeContentToFile(note.FileDestination, unitedNotes)
 	if err != nil {
 		return "", err
 	}
@@ -108,14 +111,24 @@ func (note Note) GetContent() ([]string, error) {
 	return note.Content, nil
 }
 
+func (note *Note) setFileDestination() {
+	path := types.NotePath.Value()
+	var fileDestination string
+	if note.Author != "" {
+		fileDestination = path + note.Title + "/" + note.Title + " - " + note.Author + ".md"
+	} else {
+		fileDestination = path + note.Title + "/" + note.Title + ".md"
+	}
+	note.FileDestination = fileDestination
+}
+
 func (note *Note) setTitleAndAuthor(buffLine string) {
 	if strings.Contains(buffLine, note.Title) {
-		defer func() {
-			note.IsLookingForTitle = false
-		}()
 		author, formattedTitle := getAuthorAndFormatTitle(note.Title)
+		fmt.Println(formattedTitle, author)
 		note.Author = author
 		note.Title = formattedTitle
+		note.IsLookingForTitle = false
 	}
 }
 

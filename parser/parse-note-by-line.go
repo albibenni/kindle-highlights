@@ -2,7 +2,6 @@ package parser
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 )
 
@@ -16,19 +15,19 @@ func checkNotesByTitle(title string, buffLine string, isNextNote bool) (result s
 			return "", false, errors.New("Title not defined")
 		}
 		if strings.Contains(buffLine, titleTrimmed) {
-			fmt.Printf("Found new note of Title %s\n", titleTrimmed)
+			//fmt.Printf("Found new note of Title %s\n", titleTrimmed)
 			return "", false, nil
 		}
 		return "", isNextNote, nil
 	case buffLine == "==========\r", buffLine == "==========\n", buffLine == "==========", buffLine == "==========\r\n":
-		fmt.Printf("delimiter not counted - new note coming")
+		//fmt.Printf("delimiter not counted - new note coming")
 		return "", true, nil
 	case len(strings.TrimSpace(buffLine)) == 0:
-		fmt.Println("Empty note line")
+		//fmt.Println("Empty note line")
 		return "", isNextNote, nil
 
 	case strings.Contains(strings.ToLower(buffLine), "your highlight "):
-		fmt.Println("Skipping boilerplate lane - your hightlight...")
+		//fmt.Println("Skipping boilerplate lane - your hightlight...")
 		return "", isNextNote, nil
 	default:
 		return buffLine, isNextNote, nil

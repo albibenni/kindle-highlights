@@ -9,11 +9,12 @@ import (
 	"strings"
 )
 
-func uniteNotes(lines []string) (string, error) {
+func uniteNotes(lines []string, title string) (string, error) {
 	if len(lines) == 0 {
 		return "", errors.New("No notes provided - no lines obtained")
 	}
-	return strings.Join(lines, "\n\n---\n\n"), nil //TODO: check line breaker
+	res := "# " + title + "\n\n" + strings.Join(lines, "\n\n---\n\n")
+	return res, nil //TODO: check line breaker
 }
 
 func writeContentToFile(filePath string, content string) error {
