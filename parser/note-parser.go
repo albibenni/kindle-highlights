@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -41,7 +42,7 @@ func (note *Note) ParseNotes() ([]string, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if note.IsLookingForTitle {
-			note.setTitle(line)
+			note.setTitleAndAuthor(line)
 		}
 		//note.Content = append(note.Content, line) // remember to trim in case \r\n to mac/linux format
 		res, isNextNotee, err := checkNotesByTitle(titleLookup, line, isNextNote)
@@ -107,12 +108,29 @@ func (note Note) GetContent() ([]string, error) {
 	return note.Content, nil
 }
 
-func (note *Note) setTitle(buffLine string) {
-	titleTrimmed := strings.TrimSpace(note.Title)
-	if strings.Contains(buffLine, titleTrimmed) {
+func (note *Note) setTitleAndAuthor(buffLine string) {
+	if strings.Contains(buffLine, note.Title) {
 		defer func() {
 			note.IsLookingForTitle = false
 		}()
-		//TODO: format title
+		author, formattedTitle := getAuthorAndFormatTitle(note.Title)
+		note.Author = author
+		note.Title = formattedTitle
 	}
+}
+
+func getAuthorAndFormatTitle(str string) (author string, formattedTitle string) {
+	// remove (Z-Library) if exists
+	formattedTitle = strings.ReplaceAll(str, "(Z-Library)", "")
+
+	// get the author
+	re := regexp.MustCompile(`\(([^)]+)\)`)
+
+	matches := re.FindStringSubmatch(formattedTitle)
+	if len(matches) == 0 {
+		return "", formattedTitle
+	}
+	formattedTitle = strings.ReplaceAll(formattedTitle, "("+matches[1]+")", "")
+	formattedTitle = strings.TrimSpace(formattedTitle)
+	return matches[1], formattedTitle
 }
