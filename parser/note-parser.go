@@ -43,7 +43,6 @@ func (note *Note) ParseNotes() ([]string, error) {
 		line := scanner.Text()
 		if note.IsLookingForTitle {
 			note.setTitleAndAuthor(line)
-			fmt.Println("Looking for title: ", note.Title)
 		}
 		res, isNextNotee, err := checkNotesByTitle(titleLookup, line, isNextNote)
 		if err != nil {
@@ -124,7 +123,7 @@ func (note *Note) setFileDestination() {
 
 func (note *Note) setTitleAndAuthor(buffLine string) {
 	if strings.Contains(buffLine, note.Title) {
-		author, formattedTitle := getAuthorAndFormatTitle(note.Title)
+		author, formattedTitle := getAuthorAndFormatTitle(buffLine)
 		fmt.Println(formattedTitle, author)
 		note.Author = author
 		note.Title = formattedTitle
