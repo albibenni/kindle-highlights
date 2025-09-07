@@ -1,8 +1,7 @@
 .PHONY: build test run clean dev compose migrate-up migrate-down lint generate
 
-#TODO: check how to get params here
 build:
-	go build -o kindle-parser && ./kindle-parser
+	go build -o kindle-parser && ./kindle-parser $(ARGS) # example make build ARGS="test Linux"
 
 test:
 	go test ./...
