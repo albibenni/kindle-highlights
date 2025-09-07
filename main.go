@@ -18,6 +18,8 @@ func main() {
 	}
 	godotenv.Load(types.GetEnvFile())
 
+	args := os.Args
+	fmt.Printf("ARGS %v", args)
 	// START Logic
 	currentDir, err := os.Getwd() //TODO: add from stdin - option 2nd arg = path arg[1] else default to env?
 	if err != nil {
