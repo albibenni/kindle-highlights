@@ -44,7 +44,7 @@ func GetEnvFile() string {
 	case "windows":
 		return "wrong pc"
 	default:
-		return string(Mac) // default fallback
+		return string(Linux) // default fallback
 	}
 }
 
