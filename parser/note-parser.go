@@ -41,6 +41,8 @@ func (note *Note) ParseNotes() ([]string, error) {
 	titleLookup := note.Title
 	for scanner.Scan() {
 		line := scanner.Text()
+		// Remove UTF-8 BOM if present (appears at beginning of file)
+		line = strings.TrimPrefix(line, "\uFEFF")
 		if note.IsLookingForTitle {
 			note.setTitleAndAuthor(line)
 		}
@@ -124,7 +126,7 @@ func (note *Note) setFileDestination() {
 func (note *Note) setTitleAndAuthor(buffLine string) {
 	if strings.Contains(buffLine, note.Title) {
 		author, formattedTitle := getAuthorAndFormatTitle(buffLine)
-		fmt.Println(formattedTitle, author)
+		fmt.Printf("Found book: %s by %s\n", formattedTitle, author)
 		note.Author = author
 		note.Title = formattedTitle
 		note.IsLookingForTitle = false

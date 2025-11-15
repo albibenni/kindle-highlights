@@ -32,17 +32,18 @@ func main() {
 	}
 
 	handleArgs(&myNote, args)
-	fmt.Printf("FileLocation: %s", myNote.FileLocation)
+	fmt.Printf("FileLocation: %s\n", myNote.FileLocation)
 	_, err := myNote.ParseNotes()
 	if err != nil {
 		fmt.Printf("Error parsing notes: %s", err)
 		return
 	}
-	_, err = myNote.WriteFile()
+	filePath, err := myNote.WriteFile()
 	if err != nil {
 		fmt.Printf("Error writing file: %s", err)
 		return
 	}
+	fmt.Printf("\n✓ Successfully wrote notes to: %s\n", filePath)
 }
 
 func handleArgs(note *parser.Note, args []string) {
