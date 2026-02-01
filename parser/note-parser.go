@@ -126,7 +126,7 @@ func (note *Note) setFileDestination() {
 func (note *Note) setTitleAndAuthor(buffLine string) {
 	if strings.Contains(buffLine, note.Title) {
 		author, formattedTitle := getAuthorAndFormatTitle(buffLine)
-		fmt.Printf("Found book: %s by %s\n", formattedTitle, author)
+		fmt.Printf("Title: %s,\nAuthor: %s\n", formattedTitle, author)
 		note.Author = author
 		note.Title = formattedTitle
 		note.IsLookingForTitle = false
