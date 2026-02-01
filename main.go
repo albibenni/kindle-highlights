@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/albibenni/kindle-highlights/parser"
@@ -17,7 +18,16 @@ func main() {
 	if envFile == "wrong pc" {
 		log.Fatal("You chose wrong!")
 	}
-	godotenv.Load(types.GetEnvFile())
+
+	// Try loading from local file first (e.g. mac.env)
+	if err := godotenv.Load(envFile); err != nil {
+		// Fallback to global config: ~/.config/kindle-highlights/.env
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			configPath := filepath.Join(homeDir, ".config", "kindle-highlights", ".env")
+			_ = godotenv.Load(configPath)
+		}
+	}
 
 	args := os.Args
 
@@ -50,7 +60,6 @@ func handleArgs(note *parser.Note, args []string) {
 	switch len(args) {
 	case 1:
 		log.Fatal("Should add title name")
-		break
 	case 2:
 		// helper
 		if strings.ToLower(args[1]) == "help" {
