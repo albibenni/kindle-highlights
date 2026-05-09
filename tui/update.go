@@ -132,13 +132,16 @@ func (m Model) LoadBooks() (Model, tea.Cmd) {
 	m.BookList = list.New(items, list.NewDefaultDelegate(), 0, 0)
 	m.BookList.Title = "Select a Book"
 
+	var cmd tea.Cmd
 	if m.Width > 0 && m.Height > 0 {
 		h, v := DocStyle.GetFrameSize()
 		m.BookList.SetSize(m.Width-h, m.Height-v)
+		// Trigger an update to ensure internal state like pagination is initialized
+		m.BookList, cmd = m.BookList.Update(tea.WindowSizeMsg{Width: m.Width - h, Height: m.Height - v})
 	}
 
 	m.State = StateSelectingBook
-	return m, nil
+	return m, cmd
 }
 
 func (m Model) handleBookSelection() (Model, tea.Cmd) {
