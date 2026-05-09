@@ -66,7 +66,7 @@ func TestGetAuthorAndFormatTitle(t *testing.T) {
 		{
 			name:       "A-nother title",
 			input:      "Uncommon Sense Teaching (Barbara Oakley etc.) (something something) (Barbara Oakley, PhD)",
-			wantTitle:  "Uncommon Sense Teaching (Barbara Oakley etc.)",
+			wantTitle:  "Uncommon Sense Teaching",
 			wantAuthor: "Barbara Oakley, PhD",
 		},
 		{

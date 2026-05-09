@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/albibenni/kindle-highlights/types"
@@ -226,13 +227,34 @@ func (note Note) GetContent() ([]string, error) {
 
 func (note *Note) setFileDestination() {
 	path := types.NotePath.Value()
+	
+	safeTitle := sanitizeFilename(note.Title)
+	safeAuthor := sanitizeFilename(note.Author)
+
 	var fileDestination string
-	if note.Author != "" {
-		fileDestination = path + note.Title + "/" + note.Title + " - " + note.Author + ".md"
+	if safeAuthor != "" {
+		fileDestination = filepath.Join(path, safeTitle, safeTitle+" - "+safeAuthor+".md")
 	} else {
-		fileDestination = path + note.Title + "/" + note.Title + ".md"
+		fileDestination = filepath.Join(path, safeTitle, safeTitle+".md")
 	}
 	note.FileDestination = fileDestination
+}
+
+func sanitizeFilename(name string) string {
+	// Illegal characters in Windows: \ / : * ? " < > |
+	// We'll replace them with a hyphen or remove them
+	replacer := strings.NewReplacer(
+		":", "-",
+		"/", "-",
+		"\\", "-",
+		"*", "",
+		"?", "",
+		"\"", "",
+		"<", "",
+		">", "",
+		"|", "-",
+	)
+	return strings.TrimSpace(replacer.Replace(name))
 }
 
 func (note *Note) setTitleAndAuthor(buffLine string) {
@@ -250,19 +272,28 @@ func getAuthorAndFormatTitle(str string) (author string, formattedTitle string) 
 	str = strings.ReplaceAll(str, "(Z-Library)", "")
 	str = strings.TrimSpace(str)
 
-	// 2. Kindle standard: Title (Author)
-	// If there are multiple parentheses, the author is almost always the last one.
-	lastOpen := strings.LastIndex(str, "(")
-	lastClose := strings.LastIndex(str, ")")
+	// 2. Loop to find and extract the last parenthesis group as the author
+	// and keep everything else as title.
+	// We handle titles like "Title (Info) (Author)" by iteratively stripping from the end.
+	tempStr := str
+	for {
+		lastOpen := strings.LastIndex(tempStr, "(")
+		lastClose := strings.LastIndex(tempStr, ")")
 
-	if lastOpen != -1 && lastClose > lastOpen {
-		author = str[lastOpen+1 : lastClose]
-		formattedTitle = strings.TrimSpace(str[:lastOpen])
-		
-		// If author looks like more noise (rare but possible), we could add checks here
-		return author, formattedTitle
+		if lastOpen != -1 && lastClose > lastOpen && lastClose == len(tempStr)-1 {
+			// Found a potential author at the very end
+			if author == "" {
+				author = tempStr[lastOpen+1 : lastClose]
+			}
+			tempStr = strings.TrimSpace(tempStr[:lastOpen])
+			continue
+		}
+		break
 	}
 
-	// No parentheses found, return the string as the title
+	if author != "" {
+		return author, tempStr
+	}
+
 	return "", str
 }
