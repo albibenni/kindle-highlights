@@ -32,10 +32,11 @@ type Note struct {
 
 func (note *Note) ParseNotes() ([]string, error) {
 	file, err := os.Open(note.FileLocation)
-	scanner := bufio.NewScanner(file)
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
 	isNextNote := true
 	titleLookup := note.Title
 	for scanner.Scan() {
