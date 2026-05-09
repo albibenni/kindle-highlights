@@ -161,3 +161,135 @@ for the same book
 		})
 	}
 }
+
+func TestSanitizeFilename(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"Normal Title", "Normal Title"},
+		{"Title: Subtitle", "Title- Subtitle"},
+		{"Path/With/Slash", "Path-With-Slash"},
+		{"Illegal*?\"<>|", "Illegal-"},
+		{"  Trim Me  ", "Trim Me"},
+	}
+
+	for _, tt := range tests {
+		got := sanitizeFilename(tt.input)
+		if got != tt.expected {
+			t.Errorf("sanitizeFilename(%q) = %q, want %q", tt.input, got, tt.expected)
+		}
+	}
+}
+
+func TestNoteGettersAndSetters(t *testing.T) {
+	// Set environment for setFileDestination
+	tmpDir, _ := os.MkdirTemp("", "getter_test")
+	defer os.RemoveAll(tmpDir)
+	os.Setenv("NOTE_PATH", tmpDir+string(os.PathSeparator))
+
+	note := &Note{
+		Author:       "Greene, Robert",
+		Title:        "Mastery",
+		Content:      []string{"Highlight 1"},
+		FileLocation: "/path/to/clippings.txt",
+	}
+
+	// Test Getters
+	if a, _ := note.GetAuthor(); a != "Greene, Robert" {
+		t.Errorf("GetAuthor() = %q, want Greene, Robert", a)
+	}
+	if t_, _ := note.GetTitle(); t_ != "Mastery" {
+		t.Errorf("GetTitle() = %q, want Mastery", t_)
+	}
+	if f, _ := note.GetFileLocation(); f != "/path/to/clippings.txt" {
+		t.Errorf("GetFileLocation() = %q, want /path/to/clippings.txt", f)
+	}
+	if c, _ := note.GetContent(); len(c) != 1 || c[0] != "Highlight 1" {
+		t.Errorf("GetContent() = %v, want [Highlight 1]", c)
+	}
+
+	// Test Setter & File Destination
+	note.setFileDestination()
+	expectedDest := filepath.Join(tmpDir, "Mastery", "Mastery - Greene, Robert.md")
+	if note.FileDestination != expectedDest {
+		t.Errorf("setFileDestination() = %q, want %q", note.FileDestination, expectedDest)
+	}
+
+	// Test Empty Getters
+	emptyNote := &Note{}
+	if _, err := emptyNote.GetAuthor(); err == nil {
+		t.Error("Expected error for empty author")
+	}
+	if _, err := emptyNote.GetTitle(); err == nil {
+		t.Error("Expected error for empty title")
+	}
+	if _, err := emptyNote.GetFileLocation(); err == nil {
+		t.Error("Expected error for empty file location")
+	}
+	if _, err := emptyNote.GetContent(); err == nil {
+		t.Error("Expected error for empty content")
+	}
+}
+
+func TestWriteFile(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "write_test")
+	defer os.RemoveAll(tmpDir)
+	os.Setenv("NOTE_PATH", tmpDir+string(os.PathSeparator))
+
+	note := &Note{
+		Title:   "Test Book",
+		Author:  "Test Author",
+		Content: []string{"Note 1", "Note 2"},
+	}
+
+	dest, err := note.WriteFile()
+	if err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	// Verify file content
+	data, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("Failed to read exported file: %v", err)
+	}
+
+	expectedContent := "# Test Book\n\nNote 1\n\n---\n\nNote 2"
+	if string(data) != expectedContent {
+		t.Errorf("Exported content = %q, want %q", string(data), expectedContent)
+	}
+
+	// Test WriteFile error (missing content)
+	emptyNote := &Note{Title: "Empty Book"}
+	if _, err := emptyNote.WriteFile(); err == nil {
+		t.Error("Expected error for empty content in WriteFile")
+	}
+
+	// Test WriteFile error (invalid path)
+	os.Setenv("NOTE_PATH", "/non/existent/path/that/should/fail")
+	badPathNote := &Note{Title: "Bad Path", Content: []string{"Note"}}
+	if _, err := badPathNote.WriteFile(); err == nil {
+		t.Error("Expected error for invalid path in WriteFile")
+	}
+}
+
+func TestUniteNotesError(t *testing.T) {
+	_, err := uniteNotes([]string{}, "Empty Title")
+	if err == nil {
+		t.Error("Expected error from uniteNotes with empty lines")
+	}
+}
+
+func TestParseNotesErrors(t *testing.T) {
+	// Test missing title
+	note := &Note{Title: ""}
+	if _, err := note.ParseNotes(); err == nil {
+		t.Error("Expected error for empty title")
+	}
+
+	// Test file not found
+	note = &Note{Title: "Valid Title", FileLocation: "non-existent-file.txt"}
+	if _, err := note.ParseNotes(); err == nil {
+		t.Error("Expected error for non-existent file")
+	}
+}
