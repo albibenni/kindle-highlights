@@ -1,2 +1,3 @@
 kindle-parser
 test-file/*.md
+.env
