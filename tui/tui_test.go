@@ -19,8 +19,8 @@ func TestTUIStateTransitions(t *testing.T) {
 		Item{TitleStr: "Custom Path", DescStr: "manual"},
 	}
 	ti := textinput.New()
-	
-	m := Model{
+
+	m := &Model{
 		State:      StateSelectingSource,
 		SourceList: list.New(items, list.NewDefaultDelegate(), 0, 0),
 		TextInput:  ti,
@@ -29,9 +29,9 @@ func TestTUIStateTransitions(t *testing.T) {
 	// 1. Test moving from Source Selection to Custom Path Input
 	// Select "Custom Path" (it's the second item, index 1)
 	m.SourceList.Select(1)
-	
+
 	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	updatedModel := newModel.(Model)
+	updatedModel := newModel.(*Model)
 
 	if updatedModel.State != StateCustomPathInput {
 		t.Errorf("Expected state to be StateCustomPathInput, got %v", updatedModel.State)
@@ -42,7 +42,7 @@ func TestTUIStateTransitions(t *testing.T) {
 
 	// 2. Test escaping back to Source Selection
 	newModel, _ = updatedModel.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	updatedModel = newModel.(Model)
+	updatedModel = newModel.(*Model)
 
 	if updatedModel.State != StateSelectingSource {
 		t.Errorf("Expected state to return to StateSelectingSource, got %v", updatedModel.State)
@@ -50,7 +50,7 @@ func TestTUIStateTransitions(t *testing.T) {
 
 	// 3. Test Window Resize
 	newModel, _ = updatedModel.Update(tea.WindowSizeMsg{Width: 100, Height: 50})
-	updatedModel = newModel.(Model)
+	updatedModel = newModel.(*Model)
 
 	if updatedModel.Width != 100 || updatedModel.Height != 50 {
 		t.Errorf("Expected size 100x50, got %dx%d", updatedModel.Width, updatedModel.Height)
@@ -68,11 +68,12 @@ func TestTUILoadBooks(t *testing.T) {
 	tmpFile.WriteString(content)
 	tmpFile.Close()
 
-	m := Model{
+	m := &Model{
 		Path: tmpFile.Name(),
 	}
 
-	updatedModel, cmd := m.LoadBooks()
+	newModel, cmd := m.LoadBooks()
+	updatedModel := newModel.(*Model)
 	if updatedModel.Err != nil {
 		t.Fatalf("LoadBooks() error = %v", updatedModel.Err)
 	}
@@ -88,7 +89,7 @@ func TestTUILoadBooks(t *testing.T) {
 }
 
 func TestTUIView(t *testing.T) {
-	m := Model{
+	m := &Model{
 		State:      StateSelectingSource,
 		SourceList: list.New([]list.Item{Item{TitleStr: "Test"}}, list.NewDefaultDelegate(), 0, 0),
 		TextInput:  textinput.New(),
@@ -146,14 +147,14 @@ func TestTUIFullFlow(t *testing.T) {
 	sourceItems := []list.Item{
 		Item{TitleStr: "Default Path", DescStr: tmpFile.Name()},
 	}
-	m := Model{
+	m := &Model{
 		State:      StateSelectingSource,
 		SourceList: list.New(sourceItems, list.NewDefaultDelegate(), 100, 100),
 	}
 
 	// 4. Simulate selecting source (Enter)
 	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = newModel.(Model)
+	m = newModel.(*Model)
 	if m.State != StateSelectingBook {
 		t.Fatalf("Expected state StateSelectingBook, got %v", m.State)
 	}
@@ -164,7 +165,7 @@ func TestTUIFullFlow(t *testing.T) {
 
 	// 6. Simulate selecting book (Enter)
 	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m = newModel.(Model)
+	m = newModel.(*Model)
 
 	if !m.Done {
 		t.Errorf("Expected model to be done, error: %v", m.Err)

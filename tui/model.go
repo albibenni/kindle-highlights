@@ -27,6 +27,8 @@ const (
 	StateSelectingBook
 )
 
+type SearchResultMsg []string
+
 type Model struct {
 	State      SessionState
 	SourceList list.Model
@@ -41,8 +43,9 @@ type Model struct {
 	Dest       string
 	Width      int
 	Height     int
+	Searching  bool
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return nil
 }

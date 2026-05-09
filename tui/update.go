@@ -1,13 +1,27 @@
 package tui
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
 	"github.com/albibenni/kindle-highlights/parser"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case SearchResultMsg:
+		m.Searching = false
+		items := []list.Item{}
+		for _, path := range msg {
+			items = append(items, Item{TitleStr: filepath.Base(path), DescStr: path, Raw: path})
+		}
+		m.SourceList.SetItems(items)
+		return m, nil
+
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
@@ -21,7 +35,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m.updateActiveComponent(msg)
 }
 
-func (m Model) handleKeyInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleKeyInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.State {
 	case StateSelectingSource:
 		return m.updateSelectingSource(msg)
@@ -34,7 +48,7 @@ func (m Model) handleKeyInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m Model) updateSelectingSource(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) updateSelectingSource(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if msg.String() == "enter" {
 		if i, ok := m.SourceList.SelectedItem().(Item); ok {
 			if i.TitleStr == "Default Path" {
@@ -44,6 +58,8 @@ func (m Model) updateSelectingSource(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if i.TitleStr == "Custom Path" {
 				m.State = StateCustomPathInput
 				m.TextInput.Focus()
+				// Clear the search list so it doesn't show previous selections
+				m.SourceList.SetItems([]list.Item{})
 				return m, nil
 			}
 		}
@@ -53,23 +69,52 @@ func (m Model) updateSelectingSource(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) updateCustomPathInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if msg.String() == "enter" {
+func (m *Model) updateCustomPathInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		if i, ok := m.SourceList.SelectedItem().(Item); ok && len(m.SourceList.Items()) > 0 && m.TextInput.Value() != "" {
+			m.Path = i.Raw
+			return m.LoadBooks()
+		}
 		m.Path = m.TextInput.Value()
 		if m.Path != "" {
 			return m.LoadBooks()
 		}
-	}
-	if msg.String() == "esc" {
-		m.State = StateSelectingSource
 		return m, nil
+
+	case "esc":
+		m.State = StateSelectingSource
+		m.Searching = false
+		m.TextInput.Blur()
+		m.TextInput.Reset()
+
+		clippingPath := os.Getenv("CLIPPING_PATH")
+		sourceItems := []list.Item{
+			Item{TitleStr: "Default Path", DescStr: clippingPath},
+			Item{TitleStr: "Custom Path", DescStr: "Manually enter a path to your clippings file"},
+		}
+		m.SourceList.SetItems(sourceItems)
+		return m, nil
+
+	case "up", "down":
+		var listCmd tea.Cmd
+		m.SourceList, listCmd = m.SourceList.Update(msg)
+		return m, listCmd
 	}
+
 	var cmd tea.Cmd
 	m.TextInput, cmd = m.TextInput.Update(msg)
+
+	query := m.TextInput.Value()
+	if len(query) >= 3 {
+		m.Searching = true
+		return m, tea.Batch(cmd, m.searchSystem(query))
+	}
+
 	return m, cmd
 }
 
-func (m Model) updateSelectingBook(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) updateSelectingBook(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.BookList.FilterState() != list.Filtering {
 		switch msg.String() {
 		case "q":
@@ -92,7 +137,7 @@ func (m Model) updateSelectingBook(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) handleResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.Width, m.Height = msg.Width, msg.Height
 	h, v := DocStyle.GetFrameSize()
 
@@ -103,7 +148,7 @@ func (m Model) handleResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) updateActiveComponent(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) updateActiveComponent(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch m.State {
 	case StateSelectingSource:
@@ -116,7 +161,7 @@ func (m Model) updateActiveComponent(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) LoadBooks() (Model, tea.Cmd) {
+func (m *Model) LoadBooks() (tea.Model, tea.Cmd) {
 	note := parser.Note{FileLocation: m.Path}
 	books, err := note.DiscoverBooks()
 	if err != nil {
@@ -136,7 +181,6 @@ func (m Model) LoadBooks() (Model, tea.Cmd) {
 	if m.Width > 0 && m.Height > 0 {
 		h, v := DocStyle.GetFrameSize()
 		m.BookList.SetSize(m.Width-h, m.Height-v)
-		// Trigger an update to ensure internal state like pagination is initialized
 		m.BookList, cmd = m.BookList.Update(tea.WindowSizeMsg{Width: m.Width - h, Height: m.Height - v})
 	}
 
@@ -144,7 +188,7 @@ func (m Model) LoadBooks() (Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) handleBookSelection() (Model, tea.Cmd) {
+func (m *Model) handleBookSelection() (tea.Model, tea.Cmd) {
 	i, ok := m.BookList.SelectedItem().(Item)
 	if !ok {
 		return m, nil
@@ -170,4 +214,31 @@ func (m Model) handleBookSelection() (Model, tea.Cmd) {
 	}
 	m.Dest = dest
 	return m, tea.Quit
+}
+
+func (m *Model) searchSystem(query string) tea.Cmd {
+	return func() tea.Msg {
+		home, _ := os.UserHomeDir()
+		// Search for filenames matching the query in HOME
+		// Using rg --files --glob to find matches fast
+		cmd := exec.Command("rg", "--files", "--glob", "*"+query+"*", home)
+		output, err := cmd.Output()
+		if err != nil {
+			return SearchResultMsg{}
+		}
+
+		lines := strings.Split(string(output), "\n")
+		results := []string{}
+		count := 0
+		for _, line := range lines {
+			if line != "" {
+				results = append(results, line)
+				count++
+				if count >= 10 { // Limit to 10 for UI clarity
+					break
+				}
+			}
+		}
+		return SearchResultMsg(results)
+	}
 }
