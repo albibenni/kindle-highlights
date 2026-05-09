@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -291,5 +292,63 @@ func TestParseNotesErrors(t *testing.T) {
 	note = &Note{Title: "Valid Title", FileLocation: "non-existent-file.txt"}
 	if _, err := note.ParseNotes(); err == nil {
 		t.Error("Expected error for non-existent file")
+	}
+}
+
+func TestParserInternalStates(t *testing.T) {
+	note := &Note{Title: "Target"}
+	var sb strings.Builder
+
+	// Test processLineByState routing for skipping
+	state := note.processLineByState(stateSkippingNote, "some line", &sb, "Target")
+	if state != stateSkippingNote {
+		t.Errorf("Expected state to remain stateSkippingNote, got %v", state)
+	}
+
+	// Test handleLookingForTitle with empty line
+	state = note.handleLookingForTitle("", "Target")
+	if state != stateLookingForTitle {
+		t.Error("Expected empty line to remain in looking state")
+	}
+
+	// Test handleLookingForTitle when IsLookingForTitle is false
+	note.IsLookingForTitle = false
+	state = note.handleLookingForTitle("Target Book", "Target")
+	if state != stateCollectingContent {
+		t.Error("Expected to transition to collecting even if discovery is off")
+	}
+}
+
+func TestWriteFileFailures(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "write_fail_test")
+	defer os.RemoveAll(tmpDir)
+
+	// Create a file where a directory should be to trigger MkdirAll failure
+	conflictFile := filepath.Join(tmpDir, "Conflict")
+	os.WriteFile(conflictFile, []byte("I am a file"), 0644)
+
+	note := &Note{
+		Title:   "Conflict", // This will try to create a directory named 'Conflict'
+		Content: []string{"test"},
+	}
+	os.Setenv("NOTE_PATH", tmpDir+string(os.PathSeparator))
+	
+	_, err := note.WriteFile()
+	if err == nil {
+		t.Error("Expected error when directory creation conflicts with a file")
+	}
+}
+
+func TestCheckWritePermissionFailure(t *testing.T) {
+	// This is platform specific, but on Unix we can test a non-writable dir
+	tmpDir, _ := os.MkdirTemp("", "perm_test")
+	defer os.RemoveAll(tmpDir)
+	
+	readonlyDir := filepath.Join(tmpDir, "readonly")
+	os.Mkdir(readonlyDir, 0555) // Read and execute only
+	
+	err := checkWritePermission(readonlyDir)
+	if err == nil {
+		t.Error("Expected error for checkWritePermission on readonly directory")
 	}
 }
