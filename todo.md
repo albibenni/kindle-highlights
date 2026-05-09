@@ -1,0 +1,3 @@
+- [ ] lower case letter search for case insensitive - uppercase case sensitive
+- [ ] write folder selectable - default or custom
+- [ ] a log saying something like: writtend successfully at xxx/xx/title.md - confirm to exit the tui
