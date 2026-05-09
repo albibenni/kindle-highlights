@@ -49,6 +49,47 @@ More content
 		}
 	}
 }
+
+func TestGetAuthorAndFormatTitle(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantTitle  string
+		wantAuthor string
+	}{
+		{
+			name:       "Simple title",
+			input:      "Mastery (Greene, Robert)",
+			wantTitle:  "Mastery",
+			wantAuthor: "Greene, Robert",
+		},
+		{
+			name:       "A-nother title",
+			input:      "Uncommon Sense Teaching (Barbara Oakley etc.) (something something) (Barbara Oakley, PhD)",
+			wantTitle:  "Uncommon Sense Teaching (Barbara Oakley etc.)",
+			wantAuthor: "Barbara Oakley, PhD",
+		},
+		{
+			name:       "Title with no author",
+			input:      "No Author Book",
+			wantTitle:  "No Author Book",
+			wantAuthor: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotAuthor, gotTitle := getAuthorAndFormatTitle(tt.input)
+			if gotTitle != tt.wantTitle {
+				t.Errorf("gotTitle = %v, want %v", gotTitle, tt.wantTitle)
+			}
+			if gotAuthor != tt.wantAuthor {
+				t.Errorf("gotAuthor = %v, want %v", gotAuthor, tt.wantAuthor)
+			}
+		})
+	}
+}
+
 func TestParseNotes(t *testing.T) {
 	// Create a temporary clippings file with UTF-8 BOM
 	content := "\uFEFF" + `The Great Gatsby (F. Scott Fitzgerald)

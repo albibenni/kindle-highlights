@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/albibenni/kindle-highlights/types"
@@ -247,17 +246,23 @@ func (note *Note) setTitleAndAuthor(buffLine string) {
 }
 
 func getAuthorAndFormatTitle(str string) (author string, formattedTitle string) {
-	// remove (Z-Library) if exists
-	formattedTitle = strings.ReplaceAll(str, "(Z-Library)", "")
+	// 1. Remove common noise markers
+	str = strings.ReplaceAll(str, "(Z-Library)", "")
+	str = strings.TrimSpace(str)
 
-	// get the author
-	re := regexp.MustCompile(`\(([^)]+)\)`)
+	// 2. Kindle standard: Title (Author)
+	// If there are multiple parentheses, the author is almost always the last one.
+	lastOpen := strings.LastIndex(str, "(")
+	lastClose := strings.LastIndex(str, ")")
 
-	matches := re.FindStringSubmatch(formattedTitle)
-	if len(matches) == 0 {
-		return "", formattedTitle
+	if lastOpen != -1 && lastClose > lastOpen {
+		author = str[lastOpen+1 : lastClose]
+		formattedTitle = strings.TrimSpace(str[:lastOpen])
+		
+		// If author looks like more noise (rare but possible), we could add checks here
+		return author, formattedTitle
 	}
-	formattedTitle = strings.ReplaceAll(formattedTitle, "("+matches[1]+")", "")
-	formattedTitle = strings.TrimSpace(formattedTitle)
-	return matches[1], formattedTitle
+
+	// No parentheses found, return the string as the title
+	return "", str
 }
