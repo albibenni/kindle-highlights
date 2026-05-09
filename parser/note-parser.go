@@ -47,34 +47,38 @@ func (note *Note) DiscoverBooks() ([]BookInfo, error) {
 	scanner := bufio.NewScanner(file)
 	booksMap := make(map[string]BookInfo)
 	var books []BookInfo
-
-	isNextLineTitle := true // Start of file is always a title line
+	isNextLineTitle := true
 
 	for scanner.Scan() {
 		line := note.prepareLine(scanner.Text())
-
-		if line == "==========" {
-			isNextLineTitle = true
-			continue
-		}
-
-		if isNextLineTitle {
-			if line != "" {
-				if _, exists := booksMap[line]; !exists {
-					author, title := getAuthorAndFormatTitle(line)
-					if title != "" {
-						info := BookInfo{Title: title, Author: author, RawLine: line}
-						booksMap[line] = info
-						books = append(books, info)
-					}
-				}
-				isNextLineTitle = false // Once we find the title, wait for the next delimiter
-			}
-			continue
-		}
+		isNextLineTitle = note.handleDiscoveryLine(line, isNextLineTitle, booksMap, &books)
 	}
 
 	return books, nil
+}
+
+func (note *Note) handleDiscoveryLine(line string, isNextLineTitle bool, booksMap map[string]BookInfo, books *[]BookInfo) bool {
+	if line == "==========" {
+		return true
+	}
+
+	if isNextLineTitle && line != "" {
+		note.addUniqueBook(line, booksMap, books)
+		return false
+	}
+
+	return isNextLineTitle
+}
+
+func (note *Note) addUniqueBook(line string, booksMap map[string]BookInfo, books *[]BookInfo) {
+	if _, exists := booksMap[line]; !exists {
+		author, title := getAuthorAndFormatTitle(line)
+		if title != "" {
+			info := BookInfo{Title: title, Author: author, RawLine: line}
+			booksMap[line] = info
+			*books = append(*books, info)
+		}
+	}
 }
 
 type BookInfo struct {
