@@ -48,20 +48,29 @@ func (note *Note) DiscoverBooks() ([]BookInfo, error) {
 	booksMap := make(map[string]BookInfo)
 	var books []BookInfo
 
+	isNextLineTitle := true // Start of file is always a title line
+
 	for scanner.Scan() {
 		line := note.prepareLine(scanner.Text())
-		if line == "" || line == "==========" || strings.HasPrefix(strings.ToLower(line), "- your") {
+
+		if line == "==========" {
+			isNextLineTitle = true
 			continue
 		}
 
-		// The first line after a delimiter (or at start of file) is the title
-		if _, exists := booksMap[line]; !exists {
-			author, title := getAuthorAndFormatTitle(line)
-			if title != "" {
-				info := BookInfo{Title: title, Author: author, RawLine: line}
-				booksMap[line] = info
-				books = append(books, info)
+		if isNextLineTitle {
+			if line != "" {
+				if _, exists := booksMap[line]; !exists {
+					author, title := getAuthorAndFormatTitle(line)
+					if title != "" {
+						info := BookInfo{Title: title, Author: author, RawLine: line}
+						booksMap[line] = info
+						books = append(books, info)
+					}
+				}
+				isNextLineTitle = false // Once we find the title, wait for the next delimiter
 			}
+			continue
 		}
 	}
 
