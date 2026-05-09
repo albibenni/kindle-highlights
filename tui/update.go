@@ -16,12 +16,15 @@ import (
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case SearchResultMsg:
-		m.Searching = false
-		items := []list.Item{}
-		for _, path := range msg {
-			items = append(items, Item{TitleStr: filepath.Base(path), DescStr: path, Raw: path})
+		// Only update if this is the result of our most recent search
+		if msg.ID == m.SearchID {
+			m.Searching = false
+			items := []list.Item{}
+			for _, path := range msg.Results {
+				items = append(items, Item{TitleStr: filepath.Base(path), DescStr: path, Raw: path})
+			}
+			m.SourceList.SetItems(items)
 		}
-		m.SourceList.SetItems(items)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -104,10 +107,11 @@ func (m *Model) updateCustomPathInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	query := m.TextInput.Value()
 	if len(query) >= 3 {
 		m.Searching = true
-		return m, tea.Batch(cmd, m.searchSystem(query))
+		m.SearchID++ // Increment sequence ID for the new search
+		return m, tea.Batch(cmd, m.searchSystem(query, m.SearchID))
 	}
 
-	// If query is too short, reset results and stop searching indicator
+	// If query is too short, reset results but keep typing fluid
 	m.Searching = false
 	m.SourceList.SetItems([]list.Item{})
 	return m, cmd
@@ -223,7 +227,7 @@ func (m *Model) getSourceItems() []list.Item {
 	}
 }
 
-func (m *Model) searchSystem(query string) tea.Cmd {
+func (m *Model) searchSystem(query string, id int) tea.Cmd {
 	return func() tea.Msg {
 		// 1. Setup a context with a strict 2-second timeout
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -232,10 +236,6 @@ func (m *Model) searchSystem(query string) tea.Cmd {
 		home, _ := os.UserHomeDir()
 
 		// 2. Search using rg with safety limits:
-		// - max-depth 6 (deep enough for most user files)
-		// - exclude large system dirs
-		// - j1 (single thread)
-		// - glob for the query
 		cmd := exec.CommandContext(ctx, "rg",
 			"--files",
 			"--max-depth", "6",
@@ -250,7 +250,7 @@ func (m *Model) searchSystem(query string) tea.Cmd {
 
 		// If timeout, error, or no matches
 		if err != nil {
-			return SearchResultMsg{}
+			return SearchResultMsg{ID: id, Results: []string{}}
 		}
 
 		lines := strings.Split(string(output), "\n")
@@ -265,6 +265,6 @@ func (m *Model) searchSystem(query string) tea.Cmd {
 				}
 			}
 		}
-		return SearchResultMsg(results)
+		return SearchResultMsg{ID: id, Results: results}
 	}
 }

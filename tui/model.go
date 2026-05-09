@@ -27,7 +27,10 @@ const (
 	StateSelectingBook
 )
 
-type SearchResultMsg []string
+type SearchResultMsg struct {
+	ID      int
+	Results []string
+}
 
 type Model struct {
 	State      SessionState
@@ -44,6 +47,7 @@ type Model struct {
 	Width      int
 	Height     int
 	Searching  bool
+	SearchID   int
 }
 
 func (m *Model) Init() tea.Cmd {
