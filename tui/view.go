@@ -2,6 +2,13 @@ package tui
 
 import (
 	"fmt"
+	"path/filepath"
+	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	selectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("170")).Bold(true)
+	normalStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
 )
 
 func (m *Model) View() string {
@@ -39,22 +46,37 @@ func (m *Model) renderSourceSelection() string {
 func (m *Model) renderCustomPathInput() string {
 	status := ""
 	if m.Searching {
-		status = "\n  Searching..."
+		status = " (Searching...)"
 	}
 
+	header := fmt.Sprintf("Enter path to your clippings file%s:", status)
+	input := m.TextInput.View()
+	footer := "(esc to go back)"
+	
 	results := ""
-	if len(m.SourceList.Items()) > 0 && m.TextInput.Value() != "" {
-		results = "\n\nSearch Results (arrows to navigate):\n" + m.SourceList.View()
+	if len(m.SearchResults) > 0 {
+		results = "\n\nSearch Results:\n"
+		for i, res := range m.SearchResults {
+			cursor := "  "
+			style := normalStyle
+			if i == m.SearchIndex {
+				cursor = "> "
+				style = selectedStyle
+			}
+			
+			filename := filepath.Base(res)
+			results += fmt.Sprintf("%s%s (%s)\n", cursor, style.Render(filename), res)
+		}
 	}
 
-	return DocStyle.Render(
-		fmt.Sprintf(
-			"Enter path to your clippings file:%s\n\n%s\n\n(esc to go back)%s",
-			status,
-			m.TextInput.View(),
-			results,
-		),
+	content := lipgloss.JoinVertical(lipgloss.Left,
+		header,
+		"\n"+input,
+		"\n"+footer,
+		results,
 	)
+
+	return DocStyle.Render(content)
 }
 
 func (m *Model) renderBookSelection() string {

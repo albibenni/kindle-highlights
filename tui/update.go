@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -19,11 +18,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Only update if this is the result of our most recent search
 		if msg.ID == m.SearchID {
 			m.Searching = false
-			items := []list.Item{}
-			for _, path := range msg.Results {
-				items = append(items, Item{TitleStr: filepath.Base(path), DescStr: path, Raw: path})
-			}
-			m.SourceList.SetItems(items)
+			m.SearchResults = msg.Results
+			m.SearchIndex = 0
 		}
 		return m, nil
 
@@ -63,8 +59,6 @@ func (m *Model) updateSelectingSource(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if i.TitleStr == "Custom Path" {
 				m.State = StateCustomPathInput
 				m.TextInput.Focus()
-				// Clear the search list so it doesn't show previous selections
-				m.SourceList.SetItems([]list.Item{})
 				return m, nil
 			}
 		}
@@ -77,8 +71,8 @@ func (m *Model) updateSelectingSource(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *Model) updateCustomPathInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		if i, ok := m.SourceList.SelectedItem().(Item); ok && len(m.SourceList.Items()) > 0 && m.TextInput.Value() != "" {
-			m.Path = i.Raw
+		if len(m.SearchResults) > 0 && m.SearchIndex < len(m.SearchResults) {
+			m.Path = m.SearchResults[m.SearchIndex]
 			return m.LoadBooks()
 		}
 		m.Path = m.TextInput.Value()
@@ -90,15 +84,22 @@ func (m *Model) updateCustomPathInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		m.State = StateSelectingSource
 		m.Searching = false
+		m.SearchResults = nil
 		m.TextInput.Blur()
 		m.TextInput.Reset()
 		m.SourceList.SetItems(m.getSourceItems())
 		return m, nil
 
-	case "up", "down":
-		var listCmd tea.Cmd
-		m.SourceList, listCmd = m.SourceList.Update(msg)
-		return m, listCmd
+	case "up":
+		if m.SearchIndex > 0 {
+			m.SearchIndex--
+		}
+		return m, nil
+	case "down":
+		if m.SearchIndex < len(m.SearchResults)-1 {
+			m.SearchIndex++
+		}
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -113,7 +114,7 @@ func (m *Model) updateCustomPathInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// If query is too short, reset results but keep typing fluid
 	m.Searching = false
-	m.SourceList.SetItems([]list.Item{})
+	m.SearchResults = nil
 	return m, cmd
 }
 

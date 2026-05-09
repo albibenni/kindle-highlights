@@ -33,21 +33,23 @@ type SearchResultMsg struct {
 }
 
 type Model struct {
-	State      SessionState
-	SourceList list.Model
-	BookList   list.Model
-	TextInput  textinput.Model
-	Choice     string
-	Author     string
-	RawTitle   string
-	Err        error
-	Done       bool
-	Path       string
-	Dest       string
-	Width      int
-	Height     int
-	Searching  bool
-	SearchID   int
+	State         SessionState
+	SourceList    list.Model
+	BookList      list.Model
+	TextInput     textinput.Model
+	SearchResults []string
+	SearchIndex   int
+	Choice        string
+	Author        string
+	RawTitle      string
+	Err           error
+	Done          bool
+	Path          string
+	Dest          string
+	Width         int
+	Height        int
+	Searching     bool
+	SearchID      int
 }
 
 func (m *Model) Init() tea.Cmd {
