@@ -1,10 +1,12 @@
 package tui
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/albibenni/kindle-highlights/parser"
 	"github.com/charmbracelet/bubbles/list"
@@ -87,13 +89,7 @@ func (m *Model) updateCustomPathInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Searching = false
 		m.TextInput.Blur()
 		m.TextInput.Reset()
-
-		clippingPath := os.Getenv("CLIPPING_PATH")
-		sourceItems := []list.Item{
-			Item{TitleStr: "Default Path", DescStr: clippingPath},
-			Item{TitleStr: "Custom Path", DescStr: "Manually enter a path to your clippings file"},
-		}
-		m.SourceList.SetItems(sourceItems)
+		m.SourceList.SetItems(m.getSourceItems())
 		return m, nil
 
 	case "up", "down":
@@ -111,6 +107,9 @@ func (m *Model) updateCustomPathInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmd, m.searchSystem(query))
 	}
 
+	// If query is too short, reset results and stop searching indicator
+	m.Searching = false
+	m.SourceList.SetItems([]list.Item{})
 	return m, cmd
 }
 
@@ -216,13 +215,40 @@ func (m *Model) handleBookSelection() (tea.Model, tea.Cmd) {
 	return m, tea.Quit
 }
 
+func (m *Model) getSourceItems() []list.Item {
+	clippingPath := os.Getenv("CLIPPING_PATH")
+	return []list.Item{
+		Item{TitleStr: "Default Path", DescStr: clippingPath},
+		Item{TitleStr: "Custom Path", DescStr: "Manually enter a path to your clippings file"},
+	}
+}
+
 func (m *Model) searchSystem(query string) tea.Cmd {
 	return func() tea.Msg {
+		// 1. Setup a context with a strict 2-second timeout
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
 		home, _ := os.UserHomeDir()
-		// Search for filenames matching the query in HOME
-		// Using rg --files --glob to find matches fast
-		cmd := exec.Command("rg", "--files", "--glob", "*"+query+"*", home)
+
+		// 2. Search using rg with safety limits:
+		// - max-depth 6 (deep enough for most user files)
+		// - exclude large system dirs
+		// - j1 (single thread)
+		// - glob for the query
+		cmd := exec.CommandContext(ctx, "rg",
+			"--files",
+			"--max-depth", "6",
+			"-j1",
+			"--glob", "*"+query+"*",
+			"-g", "!Library",
+			"-g", "!.Trash",
+			"-g", "!node_modules",
+			home)
+
 		output, err := cmd.Output()
+
+		// If timeout, error, or no matches
 		if err != nil {
 			return SearchResultMsg{}
 		}
@@ -234,7 +260,7 @@ func (m *Model) searchSystem(query string) tea.Cmd {
 			if line != "" {
 				results = append(results, line)
 				count++
-				if count >= 10 { // Limit to 10 for UI clarity
+				if count >= 10 {
 					break
 				}
 			}
