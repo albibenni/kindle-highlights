@@ -37,6 +37,43 @@ const (
 	stateSkippingNote
 )
 
+func (note *Note) DiscoverBooks() ([]BookInfo, error) {
+	file, err := os.Open(note.FileLocation)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	booksMap := make(map[string]BookInfo)
+	var books []BookInfo
+
+	for scanner.Scan() {
+		line := note.prepareLine(scanner.Text())
+		if line == "" || line == "==========" || strings.HasPrefix(strings.ToLower(line), "- your") {
+			continue
+		}
+
+		// The first line after a delimiter (or at start of file) is the title
+		if _, exists := booksMap[line]; !exists {
+			author, title := getAuthorAndFormatTitle(line)
+			if title != "" {
+				info := BookInfo{Title: title, Author: author, RawLine: line}
+				booksMap[line] = info
+				books = append(books, info)
+			}
+		}
+	}
+
+	return books, nil
+}
+
+type BookInfo struct {
+	Title   string
+	Author  string
+	RawLine string
+}
+
 func (note *Note) ParseNotes() ([]string, error) {
 	file, err := os.Open(note.FileLocation)
 	if err != nil {

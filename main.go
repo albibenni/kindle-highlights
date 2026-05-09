@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -9,64 +8,126 @@ import (
 
 	"github.com/albibenni/kindle-highlights/parser"
 	"github.com/albibenni/kindle-highlights/types"
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/joho/godotenv"
 )
+
+var docStyle = lipgloss.NewStyle().Margin(1, 2)
+
+type item struct {
+	title, desc, raw string
+}
+
+func (i item) Title() string       { return i.title }
+func (i item) Description() string { return i.desc }
+func (i item) FilterValue() string { return i.title + " " + i.desc }
+
+type model struct {
+	list     list.Model
+	choice   string
+	author   string
+	rawTitle string
+	err      error
+	done     bool
+	path     string
+	dest     string
+}
+
+func (m model) Init() tea.Cmd {
+	return nil
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.String() == "ctrl+c" {
+			return m, tea.Quit
+		}
+		if msg.String() == "enter" {
+			i, ok := m.list.SelectedItem().(item)
+			if ok {
+				m.choice = i.title
+				m.author = i.desc
+				m.rawTitle = i.raw
+				m.done = true
+
+				// Execute parsing
+				note := parser.Note{
+					Title:             m.rawTitle, // Use raw title for parsing match
+					FileLocation:      m.path,
+					IsLookingForTitle: true,
+				}
+
+				// The parser expects Title to match exactly what's in the file
+				// but our UI shows the formatted one. 
+				// Let's set the note.Title back to the raw line to ensure match.
+
+				_, err := note.ParseNotes()
+				if err != nil {
+					m.err = err
+					return m, tea.Quit
+				}
+				dest, err := note.WriteFile()
+				if err != nil {
+					m.err = err
+					return m, tea.Quit
+				}
+				m.dest = dest
+				return m, tea.Quit
+			}
+		}
+	case tea.WindowSizeMsg:
+		h, v := docStyle.GetFrameSize()
+		m.list.SetSize(msg.Width-h, msg.Height-v)
+	}
+
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
+}
+
+func (m model) View() string {
+	if m.err != nil {
+		return fmt.Sprintf("\nError: %v\n", m.err)
+	}
+	if m.done {
+		return fmt.Sprintf("\n✓ Successfully exported highlights for '%s'\nDest: %s\n", m.choice, m.dest)
+	}
+	return docStyle.Render(m.list.View())
+}
 
 func main() {
 	loadEnvironment()
 
-	testMode := flag.Bool("test", false, "Use the local test clippings file")
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Hello, Note!\n\n")
-		fmt.Fprintf(os.Stderr, "Usage: %s [flags] <title> [file-location]\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "\nFlags:\n")
-		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nExamples:\n")
-		fmt.Fprintf(os.Stderr, "  %s \"The Great Gatsby\"\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -test \"The Great Gatsby\"\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s \"The Great Gatsby\" /path/to/clippings.txt\n", os.Args[0])
+	clippingPath := types.ClippingPath.Value()
+	if clippingPath == "" {
+		log.Fatal("CLIPPING_PATH not set in environment")
 	}
-	flag.Parse()
 
-	args := flag.Args()
-	if len(args) < 1 {
-		flag.Usage()
+	note := parser.Note{FileLocation: clippingPath}
+	books, err := note.DiscoverBooks()
+	if err != nil {
+		log.Fatalf("Error discovering books: %v", err)
+	}
+
+	items := []list.Item{}
+	for _, b := range books {
+		items = append(items, item{title: b.Title, desc: b.Author, raw: b.RawLine})
+	}
+
+	m := model{
+		list: list.New(items, list.NewDefaultDelegate(), 0, 0),
+		path: clippingPath,
+	}
+	m.list.Title = "Kindle Highlights - Select a Book"
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
-
-	myNote := parser.Note{
-		Title:             args[0],
-		FileLocation:      types.ClippingPath.Value(),
-		IsLookingForTitle: true,
-	}
-
-	// Handle test mode or custom file location
-	if *testMode {
-		currentDir, err := os.Getwd()
-		if err != nil {
-			log.Fatalf("Error getting current directory: %v", err)
-		}
-		myNote.FileLocation = filepath.Join(currentDir, "test-file", "My Clippings.txt")
-	} else if len(args) > 1 {
-		myNote.FileLocation = args[1]
-	}
-
-	if myNote.FileLocation == "" {
-		log.Fatal("File location not defined. Please set CLIPPING_PATH in your .env or provide a file path as an argument.")
-	}
-
-	fmt.Printf("FileLocation: %s\n", myNote.FileLocation)
-
-	if _, err := myNote.ParseNotes(); err != nil {
-		log.Fatalf("Error parsing notes: %v", err)
-	}
-
-	filePath, err := myNote.WriteFile()
-	if err != nil {
-		log.Fatalf("Error writing file: %v", err)
-	}
-
-	fmt.Printf("\n✓ Successfully wrote notes to: %s\n", filePath)
 }
 
 func loadEnvironment() {
@@ -75,9 +136,7 @@ func loadEnvironment() {
 		log.Fatal("Windows is not supported yet.")
 	}
 
-	// Try loading from local file first (e.g. mac.env, linux.env)
 	if err := godotenv.Load(envFile); err != nil {
-		// Fallback to global config: ~/.config/kindle-highlights/.env
 		homeDir, err := os.UserHomeDir()
 		if err == nil {
 			configPath := filepath.Join(homeDir, ".config", "kindle-highlights", ".env")
