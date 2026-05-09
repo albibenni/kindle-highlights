@@ -42,9 +42,25 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle global quit keys
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
+
+		// Only handle j/k/q when NOT filtering
+		if m.list.FilterState() != list.Filtering {
+			switch msg.String() {
+			case "q":
+				return m, tea.Quit
+			case "j":
+				m.list.CursorDown()
+				return m, nil
+			case "k":
+				m.list.CursorUp()
+				return m, nil
+			}
+		}
+
 		if msg.String() == "enter" {
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
@@ -59,10 +75,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					FileLocation:      m.path,
 					IsLookingForTitle: true,
 				}
-
-				// The parser expects Title to match exactly what's in the file
-				// but our UI shows the formatted one. 
-				// Let's set the note.Title back to the raw line to ensure match.
 
 				_, err := note.ParseNotes()
 				if err != nil {
