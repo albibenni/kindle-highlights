@@ -1,4 +1,9 @@
-.PHONY: build test run clean dev compose migrate-up migrate-down lint generate deps install setup-config
+.PHONY: build test run clean dev compose migrate-up migrate-down lint generate deps install setup-config coverage
+
+coverage:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
+	@rm coverage.out
 
 build:
 	go build -o kindle-parser && ./kindle-parser $(ARGS) # example make build ARGS="test Linux"
