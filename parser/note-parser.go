@@ -54,53 +54,14 @@ func (note *Note) ParseNotes() ([]string, error) {
 	}
 
 	for scanner.Scan() {
-		line := scanner.Text()
-		// Clean BOM and trim platform-specific trailing whitespace (CRLF handling)
-		line = strings.TrimPrefix(line, "\uFEFF")
-		line = strings.TrimRight(line, "\r\n")
+		line := note.prepareLine(scanner.Text())
 
-		// Kindle delimiter marks the end of a note block
 		if line == "==========" {
-			if state == stateCollectingContent && currentHighlight.Len() > 0 {
-				note.Content = append(note.Content, strings.TrimSpace(currentHighlight.String()))
-				currentHighlight.Reset()
-			}
-			state = stateLookingForTitle
+			state = note.finalizeNote(state, &currentHighlight)
 			continue
 		}
 
-		switch state {
-		case stateLookingForTitle:
-			if line == "" {
-				continue
-			}
-			if strings.Contains(line, titleLookup) {
-				if note.IsLookingForTitle {
-					note.setTitleAndAuthor(line)
-				}
-				state = stateCollectingContent
-			} else {
-				state = stateSkippingNote
-			}
-
-		case stateCollectingContent:
-			lowerLine := strings.ToLower(line)
-			// Skip metadata and empty lines
-			if strings.Contains(lowerLine, "your highlight") ||
-				strings.Contains(lowerLine, "your note") ||
-				line == "" {
-				continue
-			}
-
-			if currentHighlight.Len() > 0 {
-				currentHighlight.WriteString("\n")
-			}
-			currentHighlight.WriteString(line)
-
-		case stateSkippingNote:
-			// Just wait for the "==========" delimiter
-			continue
-		}
+		state = note.processLineByState(state, line, &currentHighlight, titleLookup)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -108,6 +69,60 @@ func (note *Note) ParseNotes() ([]string, error) {
 	}
 
 	return note.Content, nil
+}
+
+func (note *Note) prepareLine(line string) string {
+	line = strings.TrimPrefix(line, "\uFEFF")
+	return strings.TrimRight(line, "\r\n")
+}
+
+func (note *Note) finalizeNote(state parserState, currentHighlight *strings.Builder) parserState {
+	if state == stateCollectingContent && currentHighlight.Len() > 0 {
+		note.Content = append(note.Content, strings.TrimSpace(currentHighlight.String()))
+		currentHighlight.Reset()
+	}
+	return stateLookingForTitle
+}
+
+func (note *Note) processLineByState(state parserState, line string, currentHighlight *strings.Builder, titleLookup string) parserState {
+	switch state {
+	case stateLookingForTitle:
+		return note.handleLookingForTitle(line, titleLookup)
+	case stateCollectingContent:
+		note.handleCollectingContent(line, currentHighlight)
+		return stateCollectingContent
+	case stateSkippingNote:
+		return stateSkippingNote
+	default:
+		return stateLookingForTitle
+	}
+}
+
+func (note *Note) handleLookingForTitle(line string, titleLookup string) parserState {
+	if line == "" {
+		return stateLookingForTitle
+	}
+	if strings.Contains(line, titleLookup) {
+		if note.IsLookingForTitle {
+			note.setTitleAndAuthor(line)
+		}
+		return stateCollectingContent
+	}
+	return stateSkippingNote
+}
+
+func (note *Note) handleCollectingContent(line string, currentHighlight *strings.Builder) {
+	lowerLine := strings.ToLower(line)
+	if strings.Contains(lowerLine, "your highlight") ||
+		strings.Contains(lowerLine, "your note") ||
+		line == "" {
+		return
+	}
+
+	if currentHighlight.Len() > 0 {
+		currentHighlight.WriteString("\n")
+	}
+	currentHighlight.WriteString(line)
 }
 
 func (note *Note) WriteFile() (string, error) {
