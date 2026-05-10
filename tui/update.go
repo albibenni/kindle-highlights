@@ -309,47 +309,78 @@ func (m *Model) searchSystem(query string, id int, isDir bool) tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		home, _ := os.UserHomeDir()
+		searchRoot, _ := os.UserHomeDir()
+		displayQuery := query
 
-		// Smart Case: Use case-insensitive glob if query is all lowercase
-		globFlag := "--glob"
-		if query == strings.ToLower(query) {
-			globFlag = "--iglob"
+		// If it looks like an absolute path, try to use it as root
+		if strings.HasPrefix(query, "/") {
+			if info, err := os.Stat(query); err == nil && info.IsDir() {
+				searchRoot = query
+				displayQuery = ""
+			} else {
+				parent := filepath.Dir(query)
+				if info, err := os.Stat(parent); err == nil && info.IsDir() {
+					searchRoot = parent
+					displayQuery = filepath.Base(query)
+				}
+			}
 		}
 
-		// 2. Search using rg with safety limits:
+		// Use rg --files to get a list of all files, then we'll filter them in Go.
+		// This is much more reliable than complex globs for mid-path directory matching.
+		// We use --hidden to find files inside hidden directories (like .obsidian)
 		cmd := exec.CommandContext(ctx, "rg",
 			"--files",
+			"--hidden",
 			"--max-depth", "6",
 			"-j1",
-			globFlag, "*"+query+"*",
 			"-g", "!Library",
 			"-g", "!.Trash",
 			"-g", "!node_modules",
-			home)
+			"-g", "!.git",
+			"-g", "!.vim",
+			"-g", "!.cache",
+			searchRoot)
 
 		output, err := cmd.Output()
-
-		// If timeout, error, or no matches
 		if err != nil {
 			return SearchResultMsg{ID: id, Results: []string{}}
 		}
 
 		lines := strings.Split(string(output), "\n")
 		results := []string{}
-		isQueryLower := query == strings.ToLower(query)
+		dirMap := make(map[string]bool)
+		isQueryLower := displayQuery == strings.ToLower(displayQuery)
 
-		if isDir {
-			dirMap := make(map[string]bool)
-			for _, line := range lines {
-				if line == "" {
-					continue
-				}
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
 
-				// Check each segment of the path to find mid-path matches
-				parts := strings.Split(line, string(os.PathSeparator))
+			fullPath := line
+			if !filepath.IsAbs(line) {
+				fullPath = filepath.Join(searchRoot, line)
+			}
+
+			// For efficiency, check if the full path contains the query at all first
+			matchFound := false
+			if displayQuery == "" {
+				matchFound = true
+			} else if isQueryLower {
+				matchFound = strings.Contains(strings.ToLower(fullPath), strings.ToLower(displayQuery))
+			} else {
+				matchFound = strings.Contains(fullPath, displayQuery)
+			}
+
+			if !matchFound {
+				continue
+			}
+
+			if isDir {
+				// We need to find the specific directory segment that matches
+				parts := strings.Split(fullPath, string(os.PathSeparator))
 				currentPath := ""
-				if strings.HasPrefix(line, string(os.PathSeparator)) {
+				if strings.HasPrefix(fullPath, string(os.PathSeparator)) {
 					currentPath = string(os.PathSeparator)
 				}
 
@@ -359,41 +390,35 @@ func (m *Model) searchSystem(query string, id int, isDir bool) tea.Cmd {
 					}
 					currentPath = filepath.Join(currentPath, part)
 
-					// Match segment using Smart Case
-					match := false
-					if isQueryLower {
-						match = strings.Contains(strings.ToLower(part), query)
+					segmentMatch := false
+					if displayQuery == "" {
+						segmentMatch = true
+					} else if isQueryLower {
+						segmentMatch = strings.Contains(strings.ToLower(part), strings.ToLower(displayQuery))
 					} else {
-						match = strings.Contains(part, query)
+						segmentMatch = strings.Contains(part, displayQuery)
 					}
 
-					if match {
+					if segmentMatch {
 						if !dirMap[currentPath] {
 							dirMap[currentPath] = true
 							results = append(results, currentPath)
 						}
-						// Continue to next file to keep results diverse, 
-						// or we could keep checking deeper segments. 
-						// For now, we stop at the first matching segment in this path.
-						break
 					}
 				}
-				if len(results) >= 10 {
-					break
+			} else {
+				// For files, we just add the full path if it hasn't been added
+				if !dirMap[fullPath] {
+					dirMap[fullPath] = true
+					results = append(results, fullPath)
 				}
 			}
-		} else {
-			count := 0
-			for _, line := range lines {
-				if line != "" {
-					results = append(results, line)
-					count++
-					if count >= 10 {
-						break
-					}
-				}
+
+			if len(results) >= 10 {
+				break
 			}
 		}
+
 		return SearchResultMsg{ID: id, Results: results}
 	}
 }
