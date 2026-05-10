@@ -92,30 +92,62 @@ func TestTUIView(t *testing.T) {
 	m := &Model{
 		State:      StateSelectingSource,
 		SourceList: list.New([]list.Item{Item{TitleStr: "Test"}}, list.NewDefaultDelegate(), 0, 0),
+		BookList:   list.New([]list.Item{Item{TitleStr: "Book"}}, list.NewDefaultDelegate(), 0, 0),
+		DestList:   list.New([]list.Item{Item{TitleStr: "Dest"}}, list.NewDefaultDelegate(), 0, 0),
 		TextInput:  textinput.New(),
 	}
 
-	// Test Source Selection View
+	// 1. Source Selection
 	view := m.View()
 	if view == "" {
 		t.Error("View returned empty string for Source Selection")
 	}
 
-	// Test Custom Path Input View
+	// 2. Custom Path Input
 	m.State = StateCustomPathInput
 	view = m.View()
-	if !strings.Contains(view, "Enter path") {
-		t.Error("Expected view to contain 'Enter path'")
+	if !strings.Contains(view, "clippings file") {
+		t.Error("Expected view to contain 'clippings file' for path input")
 	}
 
-	// Test Error View
+	// 3. Selecting Book
+	m.State = StateSelectingBook
+	view = m.View()
+	if view == "" {
+		t.Error("View returned empty string for Selecting Book")
+	}
+
+	// 4. Selecting Dest
+	m.State = StateSelectingDest
+	view = m.View()
+	if view == "" {
+		t.Error("View returned empty string for Selecting Dest")
+	}
+
+	// 5. Custom Dest Input
+	m.State = StateCustomDestInput
+	view = m.View()
+	if !strings.Contains(view, "destination folder") {
+		t.Error("Expected view to contain 'destination folder' for dest input")
+	}
+
+	// 6. Confirm Export
+	m.State = StateConfirmExport
+	m.Choice = "My Book"
+	m.BasePath = "/path/to/base"
+	view = m.View()
+	if !strings.Contains(view, "Confirm Export") || !strings.Contains(view, "My Book") {
+		t.Error("Confirm Export view failed")
+	}
+
+	// 7. Error View
 	m.Err = fmt.Errorf("test error")
 	view = m.View()
 	if !strings.Contains(view, "Error: test error") {
 		t.Errorf("Expected view to contain error message, got: %s", view)
 	}
 
-	// Test Done View
+	// 8. Done View (StateConfirmSuccess)
 	m.Err = nil
 	m.Done = true
 	m.Choice = "My Book"
@@ -147,6 +179,27 @@ func TestSmartCaseLogic(t *testing.T) {
 		if gotFlag != tt.wantFlag {
 			t.Errorf("For query %q, got flag %q, want %q", tt.query, gotFlag, tt.wantFlag)
 		}
+	}
+}
+
+func TestItemMethods(t *testing.T) {
+	item := Item{
+		TitleStr: "Clean Code",
+		DescStr:  "Robert C. Martin",
+		Raw:      "Clean Code (Robert C. Martin)",
+	}
+
+	if item.Title() != "Clean Code" {
+		t.Errorf("Expected Title() 'Clean Code', got %q", item.Title())
+	}
+
+	if item.Description() != "Robert C. Martin" {
+		t.Errorf("Expected Description() 'Robert C. Martin', got %q", item.Description())
+	}
+
+	expectedFilter := "Clean Code Robert C. Martin"
+	if item.FilterValue() != expectedFilter {
+		t.Errorf("Expected FilterValue() %q, got %q", expectedFilter, item.FilterValue())
 	}
 }
 
