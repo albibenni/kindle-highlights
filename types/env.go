@@ -36,7 +36,11 @@ func (e EnvFile) String() string {
 }
 
 func GetEnvFile() string {
-	switch runtime.GOOS {
+	return getEnvFileForOS(runtime.GOOS)
+}
+
+func getEnvFileForOS(os string) string {
+	switch os {
 	case "darwin":
 		return string(Mac)
 	case "linux":

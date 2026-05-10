@@ -11,13 +11,13 @@ import (
 
 func uniteNotes(lines []string, title string) (string, error) {
 	if len(lines) == 0 {
-		return "", errors.New("No notes provided - no lines obtained")
+		return "", errors.New("no notes provided - no lines obtained")
 	}
 	res := "# " + title + "\n\n" + strings.Join(lines, "\n\n---\n\n")
 	return res, nil //TODO: check line breaker
 }
 
-func writeContentToFile(filePath string, content string) error {
+func writeContentToFile(filePath string, content string) (err error) {
 	// Ensure directory exists
 	// Check permissions
 	// Write the real file using a buffer
@@ -34,7 +34,11 @@ func writeContentToFile(filePath string, content string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create file %s: %w", filePath, err)
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	writer := bufio.NewWriter(file)
 	defer func() {
@@ -57,7 +61,7 @@ func checkWritePermission(dir string) error {
 	if err != nil {
 		return err
 	}
-	file.Close()
-	os.Remove(testFile)
+	_ = file.Close()
+	_ = os.Remove(testFile)
 	return nil
 }

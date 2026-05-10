@@ -1,4 +1,13 @@
-.PHONY: build test run clean dev compose migrate-up migrate-down lint generate deps install setup-config coverage
+.PHONY: build test run clean dev compose migrate-up migrate-down lint generate deps install setup-config coverage install-hooks setup
+
+setup:
+	@./scripts/install.sh
+
+install-hooks:
+	@echo "Installing pre-commit hooks..."
+	@printf "#!/bin/sh\n\n# Run linting\nmake lint\nif [ \$$? -ne 0 ]; then\n    echo 'Linting failed. Commit aborted.'\n    exit 1\nfi\n\n# Run tests\nmake test\nif [ \$$? -ne 0 ]; then\n    echo 'Tests failed. Commit aborted.'\n    exit 1\nfi\n\necho 'All checks passed. Proceeding with commit.'\n" > .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@echo "Hooks installed successfully."
 
 coverage:
 	go test -coverprofile=coverage.out ./...
@@ -29,14 +38,13 @@ deps:
 lint:
 	golangci-lint run
 
-docker-build:
-	docker build -t myapp .
-
 deploy:
 	./scripts/deploy.sh
 
 install:
-	go build -o $(HOME)/go/bin/kindle-parser .
+	@command -v rg >/dev/null 2>&1 || { echo >&2 "Warning: ripgrep (rg) is not installed. System search feature will not work."; }
+	go install .
+	@echo "Installed kindle-parser to $$(go env GOPATH)/bin"
 
 setup-config:
 	mkdir -p $(HOME)/.config/kindle-highlights
