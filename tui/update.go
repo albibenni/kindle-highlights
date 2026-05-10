@@ -404,10 +404,19 @@ func (m *Model) searchSystem(query string, id int, isDir bool) tea.Cmd {
 					segmentMatch := false
 					if displayQuery == "" {
 						segmentMatch = true
-					} else if isQueryLower {
-						segmentMatch = strings.Contains(strings.ToLower(part), strings.ToLower(displayQuery))
 					} else {
-						segmentMatch = strings.Contains(part, displayQuery)
+						// If the query contains a slash, we match against the cumulative path.
+						// Otherwise, we match against the individual segment (mid-path discovery).
+						targetToMatch := part
+						if strings.Contains(displayQuery, string(os.PathSeparator)) {
+							targetToMatch = currentPath
+						}
+
+						if isQueryLower {
+							segmentMatch = strings.Contains(strings.ToLower(targetToMatch), strings.ToLower(displayQuery))
+						} else {
+							segmentMatch = strings.Contains(targetToMatch, displayQuery)
+						}
 					}
 
 					if segmentMatch {
