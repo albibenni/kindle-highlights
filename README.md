@@ -95,6 +95,7 @@ kindle-parser
 
 - **Source Selection:** Choose between your configured `Default Path` or a `Custom Path`.
 - **Custom Path Search:** If you choose Custom Path, you can start typing to search for `.txt` files on your system (requires `ripgrep`).
+    - **Smart Case:** The search is case-insensitive if you type in all lowercase, and case-sensitive if you include any uppercase letters.
 - **Book Selection:** Browse the list of books found in your clippings file.
 - **Export:** Select a book and press `Enter` to parse and export all highlights to your `NOTE_PATH`.
 

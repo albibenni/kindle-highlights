@@ -236,12 +236,18 @@ func (m *Model) searchSystem(query string, id int) tea.Cmd {
 
 		home, _ := os.UserHomeDir()
 
+		// Smart Case: Use case-insensitive glob if query is all lowercase
+		globFlag := "--glob"
+		if query == strings.ToLower(query) {
+			globFlag = "--iglob"
+		}
+
 		// 2. Search using rg with safety limits:
 		cmd := exec.CommandContext(ctx, "rg",
 			"--files",
 			"--max-depth", "6",
 			"-j1",
-			"--glob", "*"+query+"*",
+			globFlag, "*"+query+"*",
 			"-g", "!Library",
 			"-g", "!.Trash",
 			"-g", "!node_modules",
