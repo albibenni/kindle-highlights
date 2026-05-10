@@ -1,5 +1,7 @@
 # Kindle Highlights Parser
 
+[![CI](https://github.com/albibenni/kindle-highlights/actions/workflows/ci.yml/badge.svg)](https://github.com/albibenni/kindle-highlights/actions/workflows/ci.yml)
+
 A interactive TUI tool to parse and organize your Kindle highlights from `My Clippings.txt`.
 
 ## Features
@@ -41,21 +43,21 @@ A interactive TUI tool to parse and organize your Kindle highlights from `My Cli
    make setup-config
    ```
 
-3. **Install Pre-commit Hooks (Recommended for developers):**
+4. **Install Pre-commit Hooks (Recommended for developers):**
    Sets up Git hooks to run linting and tests automatically before each commit.
 
    ```bash
    make install-hooks
    ```
 
-4. **Install the Binary:**
+5. **Install the Binary:**
    This uses `go install` to compile and place the binary in your Go bin directory (`$(go env GOPATH)/bin`).
 
    ```bash
    make install
    ```
 
-5. **Update PATH (if necessary):**
+6. **Update PATH (if necessary):**
    If you can't run `kindle-parser` immediately, ensure your Go bin directory is in your system PATH.
 
    ```bash

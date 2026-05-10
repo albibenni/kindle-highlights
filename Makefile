@@ -38,9 +38,6 @@ deps:
 lint:
 	golangci-lint run
 
-docker-build:
-	docker build -t myapp .
-
 deploy:
 	./scripts/deploy.sh
 
