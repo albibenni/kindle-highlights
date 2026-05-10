@@ -1,12 +1,14 @@
 # Kindle Highlights Parser
 
-A CLI tool to parse and organize your Kindle highlights from `My Clippings.txt`.
+A interactive TUI tool to parse and organize your Kindle highlights from `My Clippings.txt`.
 
 ## Features
 
-- Extracts highlights by book title.
-- Export clean notes to a specified directory (e.g., your Obsidian vault or Second Brain).
-- Supports local and global configuration.
+- **Interactive TUI:** Easily navigate your clipping sources and book list.
+- **Smart Search:** Search for your clippings file directly within the app.
+- **Clean Export:** Extracts highlights by book title and exports them as clean Markdown files to your specified directory (e.g., Obsidian vault).
+- **Automated Organization:** Automatically creates folders and filename patterns based on Title and Author.
+- **Local & Global Config:** Supports flexible environment-based configuration.
 
 ## Installation
 
@@ -14,6 +16,7 @@ A CLI tool to parse and organize your Kindle highlights from `My Clippings.txt`.
 
 - [Go](https://go.dev/dl/) installed (version 1.24+ recommended).
 - `make` utility.
+- [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`) for the system-wide clippings search feature.
 
 ### Steps
 
@@ -24,44 +27,51 @@ A CLI tool to parse and organize your Kindle highlights from `My Clippings.txt`.
    cd kindle-highlights
    ```
 
-2. **Setup Global Configuration:**
-   This command creates the config directory at `~/.config/kindle-highlights/` and copies the default `mac.env` there.
+2. **Interactive Setup (Recommended):**
+   This script checks dependencies, installs the app, and lets you set a custom alias.
+
+   ```bash
+   make setup
+   ```
+
+3. **Setup Global Configuration:**
+   This command creates the config directory at `~/.config/kindle-highlights/` and copies a template `.env` there.
 
    ```bash
    make setup-config
    ```
 
-3. **Install Pre-commit Hooks (Optional but recommended):**
-   This sets up Git hooks to run linting and tests automatically before each commit.
+3. **Install Pre-commit Hooks (Recommended for developers):**
+   Sets up Git hooks to run linting and tests automatically before each commit.
 
    ```bash
    make install-hooks
    ```
 
 4. **Install the Binary:**
-   Compiles the application as `kindle-parser` and installs it to `~/go/bin`.
+   This uses `go install` to compile and place the binary in your Go bin directory (`$(go env GOPATH)/bin`).
 
    ```bash
    make install
    ```
 
 5. **Update PATH (if necessary):**
-   Ensure your Go binary directory is in your system PATH.
+   If you can't run `kindle-parser` immediately, ensure your Go bin directory is in your system PATH.
 
    ```bash
-   export PATH=$HOME/go/bin:$PATH
+   export PATH=$(go env GOPATH)/bin:$PATH
    ```
 
 ## Configuration
 
 The application looks for configuration in the following order:
 
-1. **Local:** `mac.env` (or `linux.env`) in the current directory. This takes precedence and is useful for development.
-2. **Global:** `~/.config/kindle-highlights/.env`. This is used when running `kindle-parser` from any other directory.
+1. **Local:** `mac.env` (or `linux.env`) in the current directory.
+2. **Global:** `~/.config/kindle-highlights/.env`.
 
 ### Environment Variables
 
-Edit your `.env` file (local or global) to set your paths:
+Edit your `.env` file to set your paths:
 
 ```env
 # Where your parsed notes will be saved (e.g., Obsidian vault)
@@ -73,46 +83,28 @@ CLIPPING_PATH="/Users/yourname/Downloads/My Clippings.txt"
 
 ## Usage
 
-Once installed, you can run the tool globally using `kindle-parser`.
-
-### Command Help
-
-Show available commands and usage options.
+Once installed, run the tool globally:
 
 ```bash
-kindle-parser help
+kindle-parser
 ```
 
-### Parse a Book
+### Navigation
 
-Search for a specific book title in your configured `CLIPPING_PATH`.
-
-```bash
-kindle-parser "The clean coder"
-```
-
-### Test Mode
-
-Use the internal test file (`test-file/My Clippings.txt`) for dry runs.
-
-```bash
-kindle-parser test "Book Title"
-```
-
-### Custom File Path
-
-Override the default clippings path for a single run.
-
-```bash
-kindle-parser "Book Title" "/path/to/other/clippings.txt"
-```
+- **Source Selection:** Choose between your configured `Default Path` or a `Custom Path`.
+- **Custom Path Search:** If you choose Custom Path, you can start typing to search for `.txt` files on your system (requires `ripgrep`).
+- **Book Selection:** Browse the list of books found in your clippings file.
+- **Export:** Select a book and press `Enter` to parse and export all highlights to your `NOTE_PATH`.
 
 ## Development
 
 Use the included `Makefile` for common tasks:
 
-- `make build`: Build the binary locally.
-- `make build-solo`: Build without args (basic).
+- `make run`: Run the application directly.
 - `make test`: Run unit tests.
-- `make lint`: Run golangci-lint.
+- `make lint`: Run `golangci-lint` (requires `golangci-lint` to be installed).
+- `make coverage`: Run tests and show code coverage.
 - `make deps`: Download Go modules.
+
+---
+Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) 🫧
