@@ -1,4 +1,7 @@
-.PHONY: build test run clean dev compose migrate-up migrate-down lint generate deps install setup-config coverage install-hooks
+.PHONY: build test run clean dev compose migrate-up migrate-down lint generate deps install setup-config coverage install-hooks setup
+
+setup:
+	@./scripts/install.sh
 
 install-hooks:
 	@echo "Installing pre-commit hooks..."
@@ -42,7 +45,9 @@ deploy:
 	./scripts/deploy.sh
 
 install:
-	go build -o $(HOME)/go/bin/kindle-parser .
+	@command -v rg >/dev/null 2>&1 || { echo >&2 "Warning: ripgrep (rg) is not installed. System search feature will not work."; }
+	go install .
+	@echo "Installed kindle-parser to $$(go env GOPATH)/bin"
 
 setup-config:
 	mkdir -p $(HOME)/.config/kindle-highlights
