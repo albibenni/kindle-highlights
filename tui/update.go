@@ -40,14 +40,12 @@ func (m *Model) handleKeyInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.State {
 	case StateSelectingSource:
 		return m.updateSelectingSource(msg)
-	case StateCustomPathInput:
-		return m.updateCustomPathInput(msg)
+	case StateCustomPathInput, StateCustomDestInput:
+		return m.updatePathSearch(msg)
 	case StateSelectingBook:
 		return m.updateSelectingBook(msg)
 	case StateSelectingDest:
 		return m.updateSelectingDest(msg)
-	case StateCustomDestInput:
-		return m.updateCustomDestInput(msg)
 	default:
 		return m, nil
 	}
@@ -62,6 +60,8 @@ func (m *Model) updateSelectingSource(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			if i.TitleStr == "Custom Path" {
 				m.State = StateCustomPathInput
+				m.TextInput.Reset()
+				m.SearchResults = nil
 				m.TextInput.Focus()
 				return m, nil
 			}
@@ -72,26 +72,37 @@ func (m *Model) updateSelectingSource(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *Model) updateCustomPathInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) updatePathSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
+		var path string
 		if len(m.SearchResults) > 0 && m.SearchIndex < len(m.SearchResults) {
-			m.Path = m.SearchResults[m.SearchIndex]
-			return m.LoadBooks()
+			path = m.SearchResults[m.SearchIndex]
+		} else {
+			path = m.TextInput.Value()
 		}
-		m.Path = m.TextInput.Value()
-		if m.Path != "" {
-			return m.LoadBooks()
+
+		if path != "" {
+			if m.State == StateCustomPathInput {
+				m.Path = path
+				return m.LoadBooks()
+			} else {
+				m.BasePath = path
+				return m.handleDestSelection()
+			}
 		}
 		return m, nil
 
 	case "esc":
-		m.State = StateSelectingSource
+		if m.State == StateCustomPathInput {
+			m.State = StateSelectingSource
+		} else {
+			m.State = StateSelectingDest
+		}
 		m.Searching = false
 		m.SearchResults = nil
 		m.TextInput.Blur()
 		m.TextInput.Reset()
-		m.SourceList.SetItems(m.getSourceItems())
 		return m, nil
 
 	case "up":
@@ -112,11 +123,10 @@ func (m *Model) updateCustomPathInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	query := m.TextInput.Value()
 	if len(query) >= 3 {
 		m.Searching = true
-		m.SearchID++ // Increment sequence ID for the new search
+		m.SearchID++
 		return m, tea.Batch(cmd, m.searchSystem(query, m.SearchID))
 	}
 
-	// If query is too short, reset results but keep typing fluid
 	m.Searching = false
 	m.SearchResults = nil
 	return m, cmd
@@ -154,6 +164,8 @@ func (m *Model) updateSelectingDest(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			if i.TitleStr == "Custom Path" {
 				m.State = StateCustomDestInput
+				m.TextInput.Reset()
+				m.SearchResults = nil
 				m.TextInput.Focus()
 				return m, nil
 			}
@@ -166,54 +178,6 @@ func (m *Model) updateSelectingDest(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	m.DestList, cmd = m.DestList.Update(msg)
-	return m, cmd
-}
-
-func (m *Model) updateCustomDestInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "enter":
-		if len(m.SearchResults) > 0 && m.SearchIndex < len(m.SearchResults) {
-			m.BasePath = m.SearchResults[m.SearchIndex]
-			return m.handleDestSelection()
-		}
-		m.BasePath = m.TextInput.Value()
-		if m.BasePath != "" {
-			return m.handleDestSelection()
-		}
-		return m, nil
-
-	case "esc":
-		m.State = StateSelectingDest
-		m.Searching = false
-		m.SearchResults = nil
-		m.TextInput.Blur()
-		m.TextInput.Reset()
-		return m, nil
-
-	case "up":
-		if m.SearchIndex > 0 {
-			m.SearchIndex--
-		}
-		return m, nil
-	case "down":
-		if m.SearchIndex < len(m.SearchResults)-1 {
-			m.SearchIndex++
-		}
-		return m, nil
-	}
-
-	var cmd tea.Cmd
-	m.TextInput, cmd = m.TextInput.Update(msg)
-
-	query := m.TextInput.Value()
-	if len(query) >= 3 {
-		m.Searching = true
-		m.SearchID++
-		return m, tea.Batch(cmd, m.searchSystem(query, m.SearchID))
-	}
-
-	m.Searching = false
-	m.SearchResults = nil
 	return m, cmd
 }
 
@@ -309,7 +273,7 @@ func (m *Model) handleBookSelection() (tea.Model, tea.Cmd) {
 	}
 
 	m.Choice, m.Author, m.RawTitle = i.TitleStr, i.DescStr, i.Raw
-	
+
 	// Initialize Dest List
 	m.DestList = list.New(m.getDestItems(), list.NewDefaultDelegate(), 0, 0)
 	m.DestList.Title = "Select Destination Path"
@@ -325,13 +289,13 @@ func (m *Model) handleBookSelection() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model) getSourceItems() []list.Item {
-	clippingPath := os.Getenv("CLIPPING_PATH")
-	return []list.Item{
-		Item{TitleStr: "Default Path", DescStr: clippingPath},
-		Item{TitleStr: "Custom Path", DescStr: "Manually enter a path to your clippings file"},
-	}
-}
+// func (m *Model) getSourceItems() []list.Item {
+// 	clippingPath := os.Getenv("CLIPPING_PATH")
+// 	return []list.Item{
+// 		Item{TitleStr: "Default Path", DescStr: clippingPath},
+// 		Item{TitleStr: "Custom Path", DescStr: "Manually enter a path to your clippings file"},
+// 	}
+// }
 
 func (m *Model) searchSystem(query string, id int) tea.Cmd {
 	return func() tea.Msg {

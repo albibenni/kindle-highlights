@@ -22,14 +22,12 @@ func (m *Model) View() string {
 	switch m.State {
 	case StateSelectingSource:
 		return m.renderSourceSelection()
-	case StateCustomPathInput:
-		return m.renderCustomPathInput()
+	case StateCustomPathInput, StateCustomDestInput:
+		return m.renderPathSearch()
 	case StateSelectingBook:
 		return m.renderBookSelection()
 	case StateSelectingDest:
 		return m.renderDestSelection()
-	case StateCustomDestInput:
-		return m.renderCustomDestInput()
 	default:
 		return ""
 	}
@@ -47,13 +45,18 @@ func (m *Model) renderSourceSelection() string {
 	return DocStyle.Render(m.SourceList.View())
 }
 
-func (m *Model) renderCustomPathInput() string {
+func (m *Model) renderPathSearch() string {
 	status := ""
 	if m.Searching {
 		status = " (Searching...)"
 	}
 
-	header := fmt.Sprintf("Enter path to your clippings file%s:", status)
+	headerText := "clippings file"
+	if m.State == StateCustomDestInput {
+		headerText = "destination folder"
+	}
+
+	header := fmt.Sprintf("Enter path to your %s%s:", headerText, status)
 	input := m.TextInput.View()
 	footer := "(esc to go back)"
 	
@@ -89,40 +92,4 @@ func (m *Model) renderBookSelection() string {
 
 func (m *Model) renderDestSelection() string {
 	return DocStyle.Render(m.DestList.View())
-}
-
-func (m *Model) renderCustomDestInput() string {
-	status := ""
-	if m.Searching {
-		status = " (Searching...)"
-	}
-
-	header := fmt.Sprintf("Enter destination path for your notes%s:", status)
-	input := m.TextInput.View()
-	footer := "(esc to go back)"
-	
-	results := ""
-	if len(m.SearchResults) > 0 {
-		results = "\n\nSearch Results:\n"
-		for i, res := range m.SearchResults {
-			cursor := "  "
-			style := normalStyle
-			if i == m.SearchIndex {
-				cursor = "> "
-				style = selectedStyle
-			}
-			
-			filename := filepath.Base(res)
-			results += fmt.Sprintf("%s%s (%s)\n", cursor, style.Render(filename), res)
-		}
-	}
-
-	content := lipgloss.JoinVertical(lipgloss.Left,
-		header,
-		"\n"+input,
-		"\n"+footer,
-		results,
-	)
-
-	return DocStyle.Render(content)
 }
