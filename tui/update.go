@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -124,7 +125,8 @@ func (m *Model) updatePathSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if len(query) >= 3 {
 		m.Searching = true
 		m.SearchID++
-		return m, tea.Batch(cmd, m.searchSystem(query, m.SearchID))
+		isDir := m.State == StateCustomDestInput
+		return m, tea.Batch(cmd, m.searchSystem(query, m.SearchID, isDir))
 	}
 
 	m.Searching = false
@@ -297,7 +299,7 @@ func (m *Model) handleBookSelection() (tea.Model, tea.Cmd) {
 // 	}
 // }
 
-func (m *Model) searchSystem(query string, id int) tea.Cmd {
+func (m *Model) searchSystem(query string, id int, isDir bool) tea.Cmd {
 	return func() tea.Msg {
 		// 1. Setup a context with a strict 2-second timeout
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -331,13 +333,30 @@ func (m *Model) searchSystem(query string, id int) tea.Cmd {
 
 		lines := strings.Split(string(output), "\n")
 		results := []string{}
-		count := 0
-		for _, line := range lines {
-			if line != "" {
-				results = append(results, line)
-				count++
-				if count >= 10 {
+
+		if isDir {
+			dirMap := make(map[string]bool)
+			for _, line := range lines {
+				if line != "" {
+					dir := filepath.Dir(line)
+					if !dirMap[dir] {
+						dirMap[dir] = true
+						results = append(results, dir)
+					}
+				}
+				if len(results) >= 10 {
 					break
+				}
+			}
+		} else {
+			count := 0
+			for _, line := range lines {
+				if line != "" {
+					results = append(results, line)
+					count++
+					if count >= 10 {
+						break
+					}
 				}
 			}
 		}
