@@ -351,6 +351,62 @@ func TestTUIActiveComponentUpdating(t *testing.T) {
 	}
 }
 
+func TestTUIPathSearchNavigation(t *testing.T) {
+	m := &Model{
+		State:         StateCustomPathInput,
+		SearchResults: []string{"res1", "res2", "res3"},
+		SearchIndex:   0,
+		TextInput:     textinput.New(),
+	}
+
+	// 1. Test Down
+	m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	if m.SearchIndex != 1 {
+		t.Errorf("Expected SearchIndex 1 after Down, got %d", m.SearchIndex)
+	}
+
+	// 2. Test Up
+	m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	if m.SearchIndex != 0 {
+		t.Errorf("Expected SearchIndex 0 after Up, got %d", m.SearchIndex)
+	}
+
+	// 3. Test Enter with results selects the indexed result
+	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if newModel.(*Model).Path != "res1" {
+		t.Errorf("Expected Path 'res1', got %s", newModel.(*Model).Path)
+	}
+}
+
+func TestTUIPathSearchTypingTrigger(t *testing.T) {
+	m := &Model{
+		State:     StateCustomPathInput,
+		TextInput: textinput.New(),
+	}
+
+	// Type 1 char - no search
+	m.TextInput.SetValue("a")
+	_, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
+
+	// Type "/" - should trigger search immediately (len >= 1 and prefix /)
+	m.TextInput.SetValue("/")
+	_, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("/")})
+	if !m.Searching {
+		t.Error("Expected search to be triggered by '/'")
+	}
+
+	// Reset
+	m.Searching = false
+	m.TextInput.Reset()
+
+	// Type "test" - should trigger search (len >= 3)
+	m.TextInput.SetValue("tes")
+	_, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("s")})
+	if !m.Searching {
+		t.Error("Expected search to be triggered by 'tes'")
+	}
+}
+
 func TestTUIFullFlow(t *testing.T) {
 	// 1. Setup temporary clippings file
 	rawLine := "Integration Test Book (Test Author)"

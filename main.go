@@ -14,11 +14,21 @@ import (
 )
 
 func main() {
-	if err := loadEnvironment(); err != nil {
+	if err := loadEnvironment(types.GetEnvFile()); err != nil {
 		fmt.Printf("Setup error: %v\n", err)
 		os.Exit(1)
 	}
 
+	m := setupModel()
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
+		os.Exit(1)
+	}
+}
+
+func setupModel() *tui.Model {
 	clippingPath := types.ClippingPath.Value()
 	sourceItems := []list.Item{
 		tui.Item{TitleStr: "Default Path", DescStr: clippingPath},
@@ -30,7 +40,7 @@ func main() {
 	ti.CharLimit = 255
 	ti.Width = 50
 
-	m := tui.Model{
+	m := &tui.Model{
 		State:      tui.StateSelectingSource,
 		SourceList: list.New(sourceItems, list.NewDefaultDelegate(), 0, 0),
 		TextInput:  ti,
@@ -39,15 +49,10 @@ func main() {
 	m.SourceList.SetShowStatusBar(false)
 	m.SourceList.SetFilteringEnabled(false)
 
-	p := tea.NewProgram(&m, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
-		os.Exit(1)
-	}
+	return m
 }
 
-func loadEnvironment() error {
-	envFile := types.GetEnvFile()
+func loadEnvironment(envFile string) error {
 	if envFile == "wrong pc" {
 		return fmt.Errorf("windows is not supported yet")
 	}

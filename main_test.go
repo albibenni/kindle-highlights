@@ -5,8 +5,22 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/albibenni/kindle-highlights/tui"
 	"github.com/joho/godotenv"
 )
+
+func TestSetupModel(t *testing.T) {
+	_ = os.Setenv("CLIPPING_PATH", "/fake/path")
+	defer func() { _ = os.Unsetenv("CLIPPING_PATH") }()
+
+	m := setupModel()
+	if m.State != tui.StateSelectingSource {
+		t.Errorf("Expected initial state StateSelectingSource, got %v", m.State)
+	}
+	if len(m.SourceList.Items()) != 2 {
+		t.Errorf("Expected 2 source items, got %d", len(m.SourceList.Items()))
+	}
+}
 
 func TestLoadEnvironment(t *testing.T) {
 	// Create a temporary .env file for testing
@@ -16,29 +30,33 @@ func TestLoadEnvironment(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	// We need to change the current directory to the temp dir so godotenv finds the file
 	origWd, _ := os.Getwd()
 	_ = os.Chdir(tmpDir)
 	defer func() { _ = os.Chdir(origWd) }()
 
-	// Create a dummy mac.env (since tests usually run on darwin or linux, we'll check GetEnvFile results)
-	// But loadEnvironment uses types.GetEnvFile() which depends on the actual OS.
-	// Let's just verify it doesn't crash and returns nil on supported OS.
-	err = loadEnvironment()
-	if err != nil && err.Error() == "windows is not supported yet" {
-		t.Skip("Skipping on Windows")
-	}
+	// 1. Test supported but missing file (should not error, just fallback)
+	err = loadEnvironment("missing.env")
 	if err != nil {
-		t.Errorf("loadEnvironment() error = %v", err)
+		t.Errorf("loadEnvironment() on missing file error = %v", err)
 	}
 
-	// Test with a real file
-	envFile := "test.env"
-	_ = os.WriteFile(envFile, []byte("TEST_MAIN_VAR=loaded"), 0644)
+	// 2. Test "wrong pc" (Windows simulation)
+	err = loadEnvironment("wrong pc")
+	if err == nil || err.Error() != "windows is not supported yet" {
+		t.Errorf("Expected windows error, got %v", err)
+	}
+
+	// 3. Test successful local load
+	localEnv := "local.env"
+	_ = os.WriteFile(localEnv, []byte("LOCAL_VAR=found"), 0644)
 	
-	// godotenv.Load(envFile) is called if we can "hijack" what GetEnvFile returns.
-	// Since we refactored GetEnvFile to use getEnvFileForOS, we can't easily hijack it without more refactoring.
-	// However, loadEnvironment also checks ~/.config/kindle-highlights/.env if the first one fails.
+	err = loadEnvironment(localEnv)
+	if err != nil {
+		t.Errorf("loadEnvironment(%q) error = %v", localEnv, err)
+	}
+	if os.Getenv("LOCAL_VAR") != "found" {
+		t.Error("Failed to load LOCAL_VAR from local.env")
+	}
 }
 
 func TestLoadEnvironmentConfigFallback(t *testing.T) {
