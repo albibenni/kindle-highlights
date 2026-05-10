@@ -26,6 +26,7 @@ type Note struct {
 	Content           []string
 	FileLocation      string
 	FileDestination   string
+	BasePath          string
 	IsLookingForTitle bool
 }
 
@@ -233,7 +234,10 @@ func (note Note) GetContent() ([]string, error) {
 }
 
 func (note *Note) setFileDestination() {
-	path := types.NotePath.Value()
+	path := note.BasePath
+	if path == "" {
+		path = types.NotePath.Value()
+	}
 	
 	safeTitle := sanitizeFilename(note.Title)
 	safeAuthor := sanitizeFilename(note.Author)

@@ -25,6 +25,8 @@ const (
 	StateSelectingSource SessionState = iota
 	StateCustomPathInput
 	StateSelectingBook
+	StateSelectingDest
+	StateCustomDestInput
 )
 
 type SearchResultMsg struct {
@@ -36,6 +38,7 @@ type Model struct {
 	State         SessionState
 	SourceList    list.Model
 	BookList      list.Model
+	DestList      list.Model
 	TextInput     textinput.Model
 	SearchResults []string
 	SearchIndex   int
@@ -46,6 +49,7 @@ type Model struct {
 	Done          bool
 	Path          string
 	Dest          string
+	BasePath      string
 	Width         int
 	Height        int
 	Searching     bool

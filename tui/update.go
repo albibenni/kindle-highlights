@@ -44,6 +44,10 @@ func (m *Model) handleKeyInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateCustomPathInput(msg)
 	case StateSelectingBook:
 		return m.updateSelectingBook(msg)
+	case StateSelectingDest:
+		return m.updateSelectingDest(msg)
+	case StateCustomDestInput:
+		return m.updateCustomDestInput(msg)
 	default:
 		return m, nil
 	}
@@ -141,6 +145,109 @@ func (m *Model) updateSelectingBook(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m *Model) updateSelectingDest(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if msg.String() == "enter" {
+		if i, ok := m.DestList.SelectedItem().(Item); ok {
+			if i.TitleStr == "Default Path" {
+				m.BasePath = i.DescStr
+				return m.handleDestSelection()
+			}
+			if i.TitleStr == "Custom Path" {
+				m.State = StateCustomDestInput
+				m.TextInput.Focus()
+				return m, nil
+			}
+		}
+	}
+	if msg.String() == "esc" {
+		m.State = StateSelectingBook
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.DestList, cmd = m.DestList.Update(msg)
+	return m, cmd
+}
+
+func (m *Model) updateCustomDestInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		if len(m.SearchResults) > 0 && m.SearchIndex < len(m.SearchResults) {
+			m.BasePath = m.SearchResults[m.SearchIndex]
+			return m.handleDestSelection()
+		}
+		m.BasePath = m.TextInput.Value()
+		if m.BasePath != "" {
+			return m.handleDestSelection()
+		}
+		return m, nil
+
+	case "esc":
+		m.State = StateSelectingDest
+		m.Searching = false
+		m.SearchResults = nil
+		m.TextInput.Blur()
+		m.TextInput.Reset()
+		return m, nil
+
+	case "up":
+		if m.SearchIndex > 0 {
+			m.SearchIndex--
+		}
+		return m, nil
+	case "down":
+		if m.SearchIndex < len(m.SearchResults)-1 {
+			m.SearchIndex++
+		}
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.TextInput, cmd = m.TextInput.Update(msg)
+
+	query := m.TextInput.Value()
+	if len(query) >= 3 {
+		m.Searching = true
+		m.SearchID++
+		return m, tea.Batch(cmd, m.searchSystem(query, m.SearchID))
+	}
+
+	m.Searching = false
+	m.SearchResults = nil
+	return m, cmd
+}
+
+func (m *Model) handleDestSelection() (tea.Model, tea.Cmd) {
+	m.Done = true
+
+	note := parser.Note{
+		Title:             m.RawTitle,
+		FileLocation:      m.Path,
+		BasePath:          m.BasePath,
+		IsLookingForTitle: true,
+	}
+
+	if _, err := note.ParseNotes(); err != nil {
+		m.Err = err
+		return m, tea.Quit
+	}
+	dest, err := note.WriteFile()
+	if err != nil {
+		m.Err = err
+		return m, tea.Quit
+	}
+	m.Dest = dest
+	return m, tea.Quit
+}
+
+func (m *Model) getDestItems() []list.Item {
+	notePath := os.Getenv("NOTE_PATH")
+	return []list.Item{
+		Item{TitleStr: "Default Path", DescStr: notePath},
+		Item{TitleStr: "Custom Path", DescStr: "Manually enter a path for your notes"},
+	}
+}
+
 func (m *Model) handleResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.Width, m.Height = msg.Width, msg.Height
 	h, v := DocStyle.GetFrameSize()
@@ -148,6 +255,9 @@ func (m *Model) handleResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.SourceList.SetSize(msg.Width-h, msg.Height-v)
 	if m.State == StateSelectingBook {
 		m.BookList.SetSize(msg.Width-h, msg.Height-v)
+	}
+	if m.State == StateSelectingDest {
+		m.DestList.SetSize(msg.Width-h, msg.Height-v)
 	}
 	return m, nil
 }
@@ -199,25 +309,20 @@ func (m *Model) handleBookSelection() (tea.Model, tea.Cmd) {
 	}
 
 	m.Choice, m.Author, m.RawTitle = i.TitleStr, i.DescStr, i.Raw
-	m.Done = true
+	
+	// Initialize Dest List
+	m.DestList = list.New(m.getDestItems(), list.NewDefaultDelegate(), 0, 0)
+	m.DestList.Title = "Select Destination Path"
+	m.DestList.SetShowStatusBar(false)
+	m.DestList.SetFilteringEnabled(false)
 
-	note := parser.Note{
-		Title:             m.RawTitle,
-		FileLocation:      m.Path,
-		IsLookingForTitle: true,
+	if m.Width > 0 && m.Height > 0 {
+		h, v := DocStyle.GetFrameSize()
+		m.DestList.SetSize(m.Width-h, m.Height-v)
 	}
 
-	if _, err := note.ParseNotes(); err != nil {
-		m.Err = err
-		return m, tea.Quit
-	}
-	dest, err := note.WriteFile()
-	if err != nil {
-		m.Err = err
-		return m, tea.Quit
-	}
-	m.Dest = dest
-	return m, tea.Quit
+	m.State = StateSelectingDest
+	return m, nil
 }
 
 func (m *Model) getSourceItems() []list.Item {

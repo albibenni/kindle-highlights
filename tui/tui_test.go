@@ -191,6 +191,14 @@ func TestTUIFullFlow(t *testing.T) {
 	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = newModel.(*Model)
 
+	if m.State != StateSelectingDest {
+		t.Fatalf("Expected state StateSelectingDest after book selection, got %v", m.State)
+	}
+
+	// 7. Simulate selecting default destination (Enter)
+	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = newModel.(*Model)
+
 	if !m.Done {
 		t.Errorf("Expected model to be done, error: %v", m.Err)
 	}
