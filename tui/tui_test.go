@@ -300,6 +300,57 @@ func TestTUIPathSearchHeaders(t *testing.T) {
 	}
 }
 
+func TestTUISearchResultHandling(t *testing.T) {
+	m := &Model{
+		Searching: true,
+		SearchID:  10,
+	}
+
+	// Correct ID - should update
+	newModel, _ := m.Update(SearchResultMsg{ID: 10, Results: []string{"res1"}})
+	updated := newModel.(*Model)
+	if updated.Searching {
+		t.Error("Searching should be false after receiving results")
+	}
+	if len(updated.SearchResults) != 1 {
+		t.Errorf("Expected 1 result, got %d", len(updated.SearchResults))
+	}
+
+	// Wrong ID - should ignore
+	m.Searching = true
+	m.SearchID = 11
+	newModel, _ = m.Update(SearchResultMsg{ID: 10, Results: []string{"wrong"}})
+	updated = newModel.(*Model)
+	if !updated.Searching || len(updated.SearchResults) != 1 { // Should still have previous results or keep searching
+		t.Error("Should have ignored results with wrong SearchID")
+	}
+}
+
+func TestTUIActiveComponentUpdating(t *testing.T) {
+	// Initialize with a simple state
+	m := &Model{
+		State:      StateSelectingSource,
+		SourceList: list.New(nil, list.NewDefaultDelegate(), 0, 0),
+		TextInput:  textinput.New(),
+		BookList:   list.New(nil, list.NewDefaultDelegate(), 0, 0),
+		DestList:   list.New(nil, list.NewDefaultDelegate(), 0, 0),
+	}
+
+	states := []SessionState{
+		StateSelectingSource,
+		StateCustomPathInput,
+		StateSelectingBook,
+		StateSelectingDest,
+	}
+
+	dummyMsg := "some_msg"
+	for _, state := range states {
+		m.State = state
+		// This ensures we reach the default case in Update and call updateActiveComponent
+		_, _ = m.Update(dummyMsg)
+	}
+}
+
 func TestTUIFullFlow(t *testing.T) {
 	// 1. Setup temporary clippings file
 	rawLine := "Integration Test Book (Test Author)"

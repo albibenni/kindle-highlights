@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -15,7 +14,10 @@ import (
 )
 
 func main() {
-	loadEnvironment()
+	if err := loadEnvironment(); err != nil {
+		fmt.Printf("Setup error: %v\n", err)
+		os.Exit(1)
+	}
 
 	clippingPath := types.ClippingPath.Value()
 	sourceItems := []list.Item{
@@ -44,10 +46,10 @@ func main() {
 	}
 }
 
-func loadEnvironment() {
+func loadEnvironment() error {
 	envFile := types.GetEnvFile()
 	if envFile == "wrong pc" {
-		log.Fatal("Windows is not supported yet.")
+		return fmt.Errorf("windows is not supported yet")
 	}
 
 	if err := godotenv.Load(envFile); err != nil {
@@ -57,4 +59,5 @@ func loadEnvironment() {
 			_ = godotenv.Load(configPath)
 		}
 	}
+	return nil
 }
