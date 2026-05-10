@@ -111,6 +111,9 @@ func (m *Model) searchSystem(query string, id int, isDir bool) tea.Cmd {
 			"-g", "!.git",
 			"-g", "!.vim",
 			"-g", "!.cache",
+			"-g", "!.yarn",
+			"-g", "!.npm",
+			"-g", "!.pnpm",
 			searchRoot)
 
 		output, err := cmd.Output()
