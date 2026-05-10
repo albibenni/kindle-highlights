@@ -9,6 +9,8 @@ import (
 var (
 	selectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("170")).Bold(true)
 	normalStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	successStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true) // Bold Green
+	dimStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))          // Gray
 )
 
 func (m *Model) View() string {
@@ -42,7 +44,14 @@ func (m *Model) renderError() string {
 }
 
 func (m *Model) renderDone() string {
-	return fmt.Sprintf("\n✓ Successfully exported highlights for '%s'\nDest: %s\n\n(press any key to exit)\n", m.Choice, m.Dest)
+	title := successStyle.Render(fmt.Sprintf("'%s'", m.Choice))
+	dest := selectedStyle.Render(m.Dest)
+	return fmt.Sprintf("\n%s\n\nTitle: %s\nPath:  %s\n\n%s\n",
+		successStyle.Render("✓ Successfully exported highlights!"),
+		title,
+		dest,
+		dimStyle.Render("(press any key to exit)"),
+	)
 }
 
 func (m *Model) renderSourceSelection() string {
@@ -99,15 +108,19 @@ func (m *Model) renderDestSelection() string {
 }
 
 func (m *Model) renderConfirmExport() string {
-	header := "Confirm Export"
-	
+	header := selectedStyle.Render("Confirm Export")
+
 	destDisplay := m.BasePath
 	if destDisplay == "" {
 		destDisplay = "(Default Path)"
 	}
 
-	content := fmt.Sprintf("Export highlights for '%s'?\nDestination: %s\n\n(y/enter to confirm, n/esc to cancel)",
-		m.Choice, destDisplay)
+	content := fmt.Sprintf("Export highlights for %s?\nDestination: %s\n\n%s %s",
+		successStyle.Render(fmt.Sprintf("'%s'", m.Choice)),
+		selectedStyle.Render(destDisplay),
+		normalStyle.Render("(y/enter to confirm,"),
+		dimStyle.Render("n/esc to cancel)"),
+	)
 
 	ui := lipgloss.JoinVertical(lipgloss.Left,
 		header,
