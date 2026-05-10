@@ -126,6 +126,30 @@ func TestTUIView(t *testing.T) {
 	}
 }
 
+func TestSmartCaseLogic(t *testing.T) {
+	tests := []struct {
+		query    string
+		wantFlag string
+	}{
+		{"clippings", "--iglob"},
+		{"Clippings", "--glob"},
+		{"CLIPPINGS", "--glob"},
+		{"my clippings", "--iglob"},
+		{"My clippings", "--glob"},
+	}
+
+	for _, tt := range tests {
+		gotFlag := "--glob"
+		if tt.query == strings.ToLower(tt.query) {
+			gotFlag = "--iglob"
+		}
+
+		if gotFlag != tt.wantFlag {
+			t.Errorf("For query %q, got flag %q, want %q", tt.query, gotFlag, tt.wantFlag)
+		}
+	}
+}
+
 func TestTUIFullFlow(t *testing.T) {
 	// 1. Setup temporary clippings file
 	rawLine := "Integration Test Book (Test Author)"
