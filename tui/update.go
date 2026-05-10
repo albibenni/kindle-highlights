@@ -122,7 +122,11 @@ func (m *Model) updatePathSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.TextInput, cmd = m.TextInput.Update(msg)
 
 	query := m.TextInput.Value()
-	if len(query) >= 3 {
+	
+	// Allow searching with 1 char if it's a path starter, otherwise min 3 chars
+	shouldSearch := len(query) >= 3 || (len(query) >= 1 && (strings.HasPrefix(query, "/") || strings.HasPrefix(query, "~")))
+	
+	if shouldSearch {
 		m.Searching = true
 		m.SearchID++
 		isDir := m.State == StateCustomDestInput
@@ -333,15 +337,45 @@ func (m *Model) searchSystem(query string, id int, isDir bool) tea.Cmd {
 
 		lines := strings.Split(string(output), "\n")
 		results := []string{}
+		isQueryLower := query == strings.ToLower(query)
 
 		if isDir {
 			dirMap := make(map[string]bool)
 			for _, line := range lines {
-				if line != "" {
-					dir := filepath.Dir(line)
-					if !dirMap[dir] {
-						dirMap[dir] = true
-						results = append(results, dir)
+				if line == "" {
+					continue
+				}
+
+				// Check each segment of the path to find mid-path matches
+				parts := strings.Split(line, string(os.PathSeparator))
+				currentPath := ""
+				if strings.HasPrefix(line, string(os.PathSeparator)) {
+					currentPath = string(os.PathSeparator)
+				}
+
+				for _, part := range parts {
+					if part == "" {
+						continue
+					}
+					currentPath = filepath.Join(currentPath, part)
+
+					// Match segment using Smart Case
+					match := false
+					if isQueryLower {
+						match = strings.Contains(strings.ToLower(part), query)
+					} else {
+						match = strings.Contains(part, query)
+					}
+
+					if match {
+						if !dirMap[currentPath] {
+							dirMap[currentPath] = true
+							results = append(results, currentPath)
+						}
+						// Continue to next file to keep results diverse, 
+						// or we could keep checking deeper segments. 
+						// For now, we stop at the first matching segment in this path.
+						break
 					}
 				}
 				if len(results) >= 10 {
