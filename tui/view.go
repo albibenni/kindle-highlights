@@ -28,6 +28,8 @@ func (m *Model) View() string {
 		return m.renderBookSelection()
 	case StateSelectingDest:
 		return m.renderDestSelection()
+	case StateConfirmExport:
+		return m.renderConfirmExport()
 	case StateConfirmSuccess:
 		return m.renderDone()
 	default:
@@ -94,4 +96,23 @@ func (m *Model) renderBookSelection() string {
 
 func (m *Model) renderDestSelection() string {
 	return DocStyle.Render(m.DestList.View())
+}
+
+func (m *Model) renderConfirmExport() string {
+	header := "Confirm Export"
+	
+	destDisplay := m.BasePath
+	if destDisplay == "" {
+		destDisplay = "(Default Path)"
+	}
+
+	content := fmt.Sprintf("Export highlights for '%s'?\nDestination: %s\n\n(y/enter to confirm, n/esc to cancel)",
+		m.Choice, destDisplay)
+
+	ui := lipgloss.JoinVertical(lipgloss.Left,
+		header,
+		"\n"+content,
+	)
+
+	return DocStyle.Render(ui)
 }

@@ -27,6 +27,7 @@ const (
 	StateSelectingBook
 	StateSelectingDest
 	StateCustomDestInput
+	StateConfirmExport
 	StateConfirmSuccess
 )
 

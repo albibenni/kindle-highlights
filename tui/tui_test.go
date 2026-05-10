@@ -199,6 +199,14 @@ func TestTUIFullFlow(t *testing.T) {
 	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = newModel.(*Model)
 
+	if m.State != StateConfirmExport {
+		t.Fatalf("Expected state StateConfirmExport after dest selection, got %v", m.State)
+	}
+
+	// 7.5 Simulate confirming export (Enter)
+	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = newModel.(*Model)
+
 	if !m.Done {
 		t.Errorf("Expected model to be done, error: %v", m.Err)
 	}

@@ -47,6 +47,8 @@ func (m *Model) handleKeyInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateSelectingBook(msg)
 	case StateSelectingDest:
 		return m.updateSelectingDest(msg)
+	case StateConfirmExport:
+		return m.updateConfirmExport(msg)
 	case StateConfirmSuccess:
 		return m, tea.Quit
 	default:
@@ -91,7 +93,7 @@ func (m *Model) updatePathSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m.LoadBooks()
 			} else {
 				m.BasePath = path
-				return m.handleDestSelection()
+				return m.prepareExport()
 			}
 		}
 		return m, nil
@@ -168,7 +170,7 @@ func (m *Model) updateSelectingDest(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if i, ok := m.DestList.SelectedItem().(Item); ok {
 			if i.TitleStr == "Default Path" {
 				m.BasePath = i.DescStr
-				return m.handleDestSelection()
+				return m.prepareExport()
 			}
 			if i.TitleStr == "Custom Path" {
 				m.State = StateCustomDestInput
@@ -189,7 +191,23 @@ func (m *Model) updateSelectingDest(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *Model) handleDestSelection() (tea.Model, tea.Cmd) {
+func (m *Model) prepareExport() (tea.Model, tea.Cmd) {
+	m.State = StateConfirmExport
+	return m, nil
+}
+
+func (m *Model) updateConfirmExport(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter", "y":
+		return m.runExport()
+	case "esc", "n":
+		m.State = StateSelectingDest
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m *Model) runExport() (tea.Model, tea.Cmd) {
 	note := parser.Note{
 		Title:             m.RawTitle,
 		FileLocation:      m.Path,
