@@ -1,4 +1,10 @@
-.PHONY: build test run clean dev compose migrate-up migrate-down lint generate deps install setup-config coverage
+.PHONY: build test run clean dev compose migrate-up migrate-down lint generate deps install setup-config coverage install-hooks
+
+install-hooks:
+	@echo "Installing pre-commit hooks..."
+	@printf "#!/bin/sh\n\n# Run linting\nmake lint\nif [ \$$? -ne 0 ]; then\n    echo 'Linting failed. Commit aborted.'\n    exit 1\nfi\n\n# Run tests\nmake test\nif [ \$$? -ne 0 ]; then\n    echo 'Tests failed. Commit aborted.'\n    exit 1\nfi\n\necho 'All checks passed. Proceeding with commit.'\n" > .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@echo "Hooks installed successfully."
 
 coverage:
 	go test -coverprofile=coverage.out ./...

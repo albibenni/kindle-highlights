@@ -31,14 +31,21 @@ A CLI tool to parse and organize your Kindle highlights from `My Clippings.txt`.
    make setup-config
    ```
 
-3. **Install the Binary:**
+3. **Install Pre-commit Hooks (Optional but recommended):**
+   This sets up Git hooks to run linting and tests automatically before each commit.
+
+   ```bash
+   make install-hooks
+   ```
+
+4. **Install the Binary:**
    Compiles the application as `kindle-parser` and installs it to `~/go/bin`.
 
    ```bash
    make install
    ```
 
-4. **Update PATH (if necessary):**
+5. **Update PATH (if necessary):**
    Ensure your Go binary directory is in your system PATH.
 
    ```bash
