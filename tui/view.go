@@ -28,17 +28,19 @@ func (m *Model) View() string {
 		return m.renderBookSelection()
 	case StateSelectingDest:
 		return m.renderDestSelection()
+	case StateConfirmSuccess:
+		return m.renderDone()
 	default:
 		return ""
 	}
 }
 
 func (m *Model) renderError() string {
-	return fmt.Sprintf("\nError: %v\n", m.Err)
+	return fmt.Sprintf("\nError: %v\n\n(press any key to exit)\n", m.Err)
 }
 
 func (m *Model) renderDone() string {
-	return fmt.Sprintf("\n✓ Successfully exported highlights for '%s'\nDest: %s\n", m.Choice, m.Dest)
+	return fmt.Sprintf("\n✓ Successfully exported highlights for '%s'\nDest: %s\n\n(press any key to exit)\n", m.Choice, m.Dest)
 }
 
 func (m *Model) renderSourceSelection() string {

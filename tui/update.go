@@ -47,6 +47,8 @@ func (m *Model) handleKeyInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateSelectingBook(msg)
 	case StateSelectingDest:
 		return m.updateSelectingDest(msg)
+	case StateConfirmSuccess:
+		return m, tea.Quit
 	default:
 		return m, nil
 	}
@@ -122,10 +124,10 @@ func (m *Model) updatePathSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.TextInput, cmd = m.TextInput.Update(msg)
 
 	query := m.TextInput.Value()
-	
+
 	// Allow searching with 1 char if it's a path starter, otherwise min 3 chars
 	shouldSearch := len(query) >= 3 || (len(query) >= 1 && (strings.HasPrefix(query, "/") || strings.HasPrefix(query, "~")))
-	
+
 	if shouldSearch {
 		m.Searching = true
 		m.SearchID++
@@ -188,8 +190,6 @@ func (m *Model) updateSelectingDest(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleDestSelection() (tea.Model, tea.Cmd) {
-	m.Done = true
-
 	note := parser.Note{
 		Title:             m.RawTitle,
 		FileLocation:      m.Path,
@@ -207,7 +207,9 @@ func (m *Model) handleDestSelection() (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 	m.Dest = dest
-	return m, tea.Quit
+	m.Done = true
+	m.State = StateConfirmSuccess
+	return m, nil
 }
 
 func (m *Model) getDestItems() []list.Item {
@@ -237,10 +239,12 @@ func (m *Model) updateActiveComponent(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.State {
 	case StateSelectingSource:
 		m.SourceList, cmd = m.SourceList.Update(msg)
-	case StateCustomPathInput:
+	case StateCustomPathInput, StateCustomDestInput:
 		m.TextInput, cmd = m.TextInput.Update(msg)
 	case StateSelectingBook:
 		m.BookList, cmd = m.BookList.Update(msg)
+	case StateSelectingDest:
+		m.DestList, cmd = m.DestList.Update(msg)
 	}
 	return m, cmd
 }
@@ -295,14 +299,6 @@ func (m *Model) handleBookSelection() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// func (m *Model) getSourceItems() []list.Item {
-// 	clippingPath := os.Getenv("CLIPPING_PATH")
-// 	return []list.Item{
-// 		Item{TitleStr: "Default Path", DescStr: clippingPath},
-// 		Item{TitleStr: "Custom Path", DescStr: "Manually enter a path to your clippings file"},
-// 	}
-// }
-
 func (m *Model) searchSystem(query string, id int, isDir bool) tea.Cmd {
 	return func() tea.Msg {
 		// 1. Setup a context with a strict 2-second timeout
@@ -327,8 +323,6 @@ func (m *Model) searchSystem(query string, id int, isDir bool) tea.Cmd {
 		}
 
 		// Use rg --files to get a list of all files, then we'll filter them in Go.
-		// This is much more reliable than complex globs for mid-path directory matching.
-		// We use --hidden to find files inside hidden directories (like .obsidian)
 		cmd := exec.CommandContext(ctx, "rg",
 			"--files",
 			"--hidden",
@@ -377,7 +371,6 @@ func (m *Model) searchSystem(query string, id int, isDir bool) tea.Cmd {
 			}
 
 			if isDir {
-				// We need to find the specific directory segment that matches
 				parts := strings.Split(fullPath, string(os.PathSeparator))
 				currentPath := ""
 				if strings.HasPrefix(fullPath, string(os.PathSeparator)) {
@@ -407,7 +400,6 @@ func (m *Model) searchSystem(query string, id int, isDir bool) tea.Cmd {
 					}
 				}
 			} else {
-				// For files, we just add the full path if it hasn't been added
 				if !dirMap[fullPath] {
 					dirMap[fullPath] = true
 					results = append(results, fullPath)

@@ -27,6 +27,7 @@ const (
 	StateSelectingBook
 	StateSelectingDest
 	StateCustomDestInput
+	StateConfirmSuccess
 )
 
 type SearchResultMsg struct {
