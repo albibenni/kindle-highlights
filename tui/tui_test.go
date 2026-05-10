@@ -64,9 +64,9 @@ func TestTUILoadBooks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
-	tmpFile.WriteString(content)
-	tmpFile.Close()
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
+	_, _ = tmpFile.WriteString(content)
+	_ = tmpFile.Close()
 
 	m := &Model{
 		Path: tmpFile.Name(),
@@ -134,14 +134,14 @@ func TestTUIFullFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
-	tmpFile.WriteString(content)
-	tmpFile.Close()
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
+	_, _ = tmpFile.WriteString(content)
+	_ = tmpFile.Close()
 
 	// 2. Setup destination environment
 	tmpDest, _ := os.MkdirTemp("", "dest_test")
-	defer os.RemoveAll(tmpDest)
-	os.Setenv("NOTE_PATH", tmpDest+"/")
+	defer func() { _ = os.RemoveAll(tmpDest) }()
+	_ = os.Setenv("NOTE_PATH", tmpDest+"/")
 
 	// 3. Initialize Model in SelectingSource state
 	sourceItems := []list.Item{

@@ -24,10 +24,10 @@ More content
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	clippingsPath := filepath.Join(tmpDir, "My Clippings.txt")
-	os.WriteFile(clippingsPath, []byte(content), 0644)
+	_ = os.WriteFile(clippingsPath, []byte(content), 0644)
 
 	note := &Note{FileLocation: clippingsPath}
 	books, err := note.DiscoverBooks()
@@ -115,7 +115,7 @@ for the same book
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	clippingsPath := filepath.Join(tmpDir, "My Clippings.txt")
 	if err := os.WriteFile(clippingsPath, []byte(content), 0644); err != nil {
@@ -186,8 +186,8 @@ func TestSanitizeFilename(t *testing.T) {
 func TestNoteGettersAndSetters(t *testing.T) {
 	// Set environment for setFileDestination
 	tmpDir, _ := os.MkdirTemp("", "getter_test")
-	defer os.RemoveAll(tmpDir)
-	os.Setenv("NOTE_PATH", tmpDir+string(os.PathSeparator))
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+	_ = os.Setenv("NOTE_PATH", tmpDir+string(os.PathSeparator))
 
 	note := &Note{
 		Author:       "Greene, Robert",
@@ -235,8 +235,8 @@ func TestNoteGettersAndSetters(t *testing.T) {
 
 func TestWriteFile(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "write_test")
-	defer os.RemoveAll(tmpDir)
-	os.Setenv("NOTE_PATH", tmpDir+string(os.PathSeparator))
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+	_ = os.Setenv("NOTE_PATH", tmpDir+string(os.PathSeparator))
 
 	note := &Note{
 		Title:   "Test Book",
@@ -267,7 +267,7 @@ func TestWriteFile(t *testing.T) {
 	}
 
 	// Test WriteFile error (invalid path)
-	os.Setenv("NOTE_PATH", "/non/existent/path/that/should/fail")
+	_ = os.Setenv("NOTE_PATH", "/non/existent/path/that/should/fail")
 	badPathNote := &Note{Title: "Bad Path", Content: []string{"Note"}}
 	if _, err := badPathNote.WriteFile(); err == nil {
 		t.Error("Expected error for invalid path in WriteFile")
@@ -321,17 +321,17 @@ func TestParserInternalStates(t *testing.T) {
 
 func TestWriteFileFailures(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "write_fail_test")
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create a file where a directory should be to trigger MkdirAll failure
 	conflictFile := filepath.Join(tmpDir, "Conflict")
-	os.WriteFile(conflictFile, []byte("I am a file"), 0644)
+	_ = os.WriteFile(conflictFile, []byte("I am a file"), 0644)
 
 	note := &Note{
 		Title:   "Conflict", // This will try to create a directory named 'Conflict'
 		Content: []string{"test"},
 	}
-	os.Setenv("NOTE_PATH", tmpDir+string(os.PathSeparator))
+	_ = os.Setenv("NOTE_PATH", tmpDir+string(os.PathSeparator))
 	
 	_, err := note.WriteFile()
 	if err == nil {
@@ -342,10 +342,10 @@ func TestWriteFileFailures(t *testing.T) {
 func TestCheckWritePermissionFailure(t *testing.T) {
 	// This is platform specific, but on Unix we can test a non-writable dir
 	tmpDir, _ := os.MkdirTemp("", "perm_test")
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 	
 	readonlyDir := filepath.Join(tmpDir, "readonly")
-	os.Mkdir(readonlyDir, 0555) // Read and execute only
+	_ = os.Mkdir(readonlyDir, 0555) // Read and execute only
 	
 	err := checkWritePermission(readonlyDir)
 	if err == nil {

@@ -37,16 +37,19 @@ const (
 	stateSkippingNote
 )
 
-func (note *Note) DiscoverBooks() ([]BookInfo, error) {
+func (note *Note) DiscoverBooks() (books []BookInfo, err error) {
 	file, err := os.Open(note.FileLocation)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	booksMap := make(map[string]BookInfo)
-	var books []BookInfo
 	isNextLineTitle := true
 
 	for scanner.Scan() {
@@ -87,12 +90,16 @@ type BookInfo struct {
 	RawLine string
 }
 
-func (note *Note) ParseNotes() ([]string, error) {
+func (note *Note) ParseNotes() (content []string, err error) {
 	file, err := os.Open(note.FileLocation)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	var currentHighlight strings.Builder
@@ -180,7 +187,7 @@ func (note *Note) WriteFile() (string, error) {
 	note.setFileDestination()
 
 	if len(note.FileDestination) == 0 {
-		return "", errors.New("File Destination not present")
+		return "", errors.New("file destination not present")
 	}
 	unitedNotes, err := uniteNotes(note.Content, note.Title)
 	if err != nil {
@@ -196,14 +203,14 @@ func (note *Note) WriteFile() (string, error) {
 
 func (note Note) GetAuthor() (string, error) {
 	if len(strings.TrimSpace(note.Author)) == 0 {
-		err := errors.New("Author not defined")
+		err := errors.New("author not defined")
 		return "", err
 	}
 	return note.Author, nil
 }
 func (note Note) GetTitle() (string, error) {
 	if len(strings.TrimSpace(note.Title)) == 0 {
-		err := errors.New("Title not defined")
+		err := errors.New("title not defined")
 		return "", err
 	}
 	return note.Title, nil
@@ -211,7 +218,7 @@ func (note Note) GetTitle() (string, error) {
 
 func (note Note) GetFileLocation() (string, error) {
 	if len(strings.TrimSpace(note.FileLocation)) == 0 {
-		err := errors.New("FileLocation not defined")
+		err := errors.New("fileLocation not defined")
 		return "", err
 	}
 	return note.FileLocation, nil
@@ -219,7 +226,7 @@ func (note Note) GetFileLocation() (string, error) {
 
 func (note Note) GetContent() ([]string, error) {
 	if len(note.Content) == 0 {
-		err := errors.New("Content not defined")
+		err := errors.New("content not defined")
 		return nil, err
 	}
 	return note.Content, nil
