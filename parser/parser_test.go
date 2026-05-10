@@ -319,6 +319,22 @@ func TestParserInternalStates(t *testing.T) {
 	}
 }
 
+func TestNoteBasePathOverride(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "basepath_test")
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	note := &Note{
+		Title:    "Custom Book",
+		BasePath: tmpDir,
+	}
+
+	note.setFileDestination()
+	expected := filepath.Join(tmpDir, "Custom Book", "Custom Book.md")
+	if note.FileDestination != expected {
+		t.Errorf("setFileDestination() with BasePath = %q, want %q", note.FileDestination, expected)
+	}
+}
+
 func TestWriteFileFailures(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "write_fail_test")
 	defer func() { _ = os.RemoveAll(tmpDir) }()

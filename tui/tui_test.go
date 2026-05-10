@@ -150,6 +150,103 @@ func TestSmartCaseLogic(t *testing.T) {
 	}
 }
 
+func TestTUIBackNavigation(t *testing.T) {
+	m := &Model{
+		State:    StateSelectingBook,
+		BookList: list.New(nil, list.NewDefaultDelegate(), 0, 0),
+		DestList: list.New(nil, list.NewDefaultDelegate(), 0, 0),
+	}
+
+	// Book -> Source
+	_, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+
+	// Dest Selection -> Book
+	m.State = StateSelectingDest
+	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if newModel.(*Model).State != StateSelectingBook {
+		t.Errorf("Expected ESC to go from Dest Selection to Selecting Book, got %v", newModel.(*Model).State)
+	}
+
+	// Confirm Export -> Dest Selection
+	m.State = StateConfirmExport
+	newModel, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc, Runes: []rune("n")})
+	if newModel.(*Model).State != StateSelectingDest {
+		t.Errorf("Expected 'n' or ESC to go from Confirm Export to Selecting Dest, got %v", newModel.(*Model).State)
+	}
+}
+
+func TestTUISearchStateReset(t *testing.T) {
+	sourceItems := []list.Item{
+		Item{TitleStr: "Custom Path", DescStr: "manual"},
+	}
+	m := &Model{
+		State:         StateSelectingSource,
+		SourceList:    list.New(sourceItems, list.NewDefaultDelegate(), 0, 0),
+		SearchResults: []string{"stale result"},
+		TextInput:     textinput.New(),
+	}
+	m.TextInput.SetValue("stale query")
+
+	// Enter Custom Path Input
+	newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := newModel.(*Model)
+
+	if updated.TextInput.Value() != "" {
+		t.Error("Expected TextInput to be reset when entering custom path")
+	}
+	if updated.SearchResults != nil {
+		t.Error("Expected SearchResults to be nil when entering custom path")
+	}
+}
+
+func TestTUIResponsiveResizing(t *testing.T) {
+	m := &Model{
+		SourceList: list.New(nil, list.NewDefaultDelegate(), 0, 0),
+		BookList:   list.New(nil, list.NewDefaultDelegate(), 0, 0),
+		DestList:   list.New(nil, list.NewDefaultDelegate(), 0, 0),
+		TextInput:  textinput.New(),
+		State:      StateSelectingBook,
+	}
+
+	w, h := 120, 60
+	newModel, _ := m.Update(tea.WindowSizeMsg{Width: w, Height: h})
+	updated := newModel.(*Model)
+
+	frameH, frameV := DocStyle.GetFrameSize()
+	expectedW, expectedH := w-frameH, h-frameV
+
+	if updated.SourceList.Width() != expectedW || updated.SourceList.Height() != expectedH {
+		t.Errorf("SourceList resize failed: got %dx%d, want %dx%d", updated.SourceList.Width(), updated.SourceList.Height(), expectedW, expectedH)
+	}
+	if updated.BookList.Width() != expectedW || updated.BookList.Height() != expectedH {
+		t.Errorf("BookList resize failed")
+	}
+	
+	// Test DestList resize specifically when in that state
+	updated.State = StateSelectingDest
+	newModel, _ = updated.Update(tea.WindowSizeMsg{Width: w, Height: h})
+	if newModel.(*Model).DestList.Width() != expectedW {
+		t.Errorf("DestList resize failed")
+	}
+}
+
+func TestTUIPathSearchHeaders(t *testing.T) {
+	m := &Model{
+		State: StateCustomPathInput,
+	}
+
+	view := m.View()
+	if !strings.Contains(view, "clippings file") {
+		t.Errorf("Expected clipping file header, got: %s", view)
+	}
+
+	m.State = StateCustomDestInput
+	view = m.View()
+	if !strings.Contains(view, "destination folder") {
+		t.Errorf("Expected destination folder header, got: %s", view)
+	}
+}
+
 func TestTUIFullFlow(t *testing.T) {
 	// 1. Setup temporary clippings file
 	rawLine := "Integration Test Book (Test Author)"
